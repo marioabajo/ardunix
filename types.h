@@ -5,12 +5,7 @@
 
 typedef unsigned char u8;
 typedef bool boolean;
-
-#ifndef __AVR__
 typedef unsigned short int u16;
-#else
-//typedef int u16;
-#endif
 
 struct dict_list
 {

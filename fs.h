@@ -15,5 +15,7 @@ struct fsentry
 		   */
 };
 
+#define fsentries 3
+
 #endif
 

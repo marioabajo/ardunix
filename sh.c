@@ -1,6 +1,17 @@
+#include <stdio.h>
 #include "sh.h"
 
-extern const struct fsentry *fs;
+
+// list files and directories
+u8 ls(u8 argc, char *argv[])
+{
+  u16 i;
+  for (i=0;i<fsentries;i++)
+  {
+    printf("%s\n",fs[i].filename);
+  }
+  return 0;
+}
 
 // parse command
 void parsecmd(u8 argc, char *argv[])
@@ -20,8 +31,8 @@ boolean getcmd(u8 buff[])
   do
   {
     // read input
-    read(0, buff+buffp, 1);
-
+    buff[buffp]=getchar();
+    //read(0, buff+buffp, 1);
 
     // treat special charaters
     switch(buff[buffp])
@@ -158,4 +169,5 @@ u8 sh(u8 argc, char *argv[])
     
   } while(1);
 }
+
 
