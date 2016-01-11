@@ -1,25 +1,87 @@
+#ifdef __AVR__
+#include <avr/pgmspace.h>
+#endif
 #include "sh.h"
-
 
 // list files and directories
 u8 ls(u8 argc, char *argv[])
 {
-  u16 i;
+  u8 i;
   for (i=0;i<fsentries;i++)
   {
-    printf("%s\n",fs[i].filename);
+    printf_P(PSTR("%s\n"),fs[i].filename);
   }
   return 0;
+}
+
+// Print free ram
+u8 freeMem (u8 argc, char *argv[])
+{
+#ifdef __AVR__
+  extern unsigned int __heap_start;
+  extern void *__brkval;
+  struct __freelist{
+    size_t sz;
+    struct __freelist *nx;
+  } *current;
+  extern struct __freelist *__flp;
+  int free_memory;
+  int total = 0;
+
+  for (current = __flp; current; current = current->nx) {
+    total += 2; /* Add two bytes for the memory block's header  */
+    total += (int) current->sz;
+  }
+  
+  if ((int)__brkval == 0) {
+    free_memory = ((int)&free_memory) - ((int)&__heap_start);
+  } else {
+    free_memory = ((int)&free_memory) - ((int)__brkval);
+    free_memory += total;
+  }
+  printf("Free: %d\n",free_memory);
+  
+  /*extern int __heap_start, *__brkval;
+  int v;
+  printf("Free: %d\n", (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval));*/
+#endif
 }
 
 // parse command
 void parsecmd(u8 argc, char *argv[])
 {
-  // TODO: workaround
-  // TODO: load commands from file system
+  // TODO: path /bin forced, make it dynamic
+
+  u8 dnode=0;
+  u8 i=0;
+  const char *PATH="bin";
+
+  printf("opendir: %d\n",opendir("/bin/ls"));
   
-  if (!strcmp(argv[0],"ls"))
-    fs[2].inode(argc-1,argv);
+  // look for directory inode
+  // TODO: split directories in path
+  while (dnode==0 && i<fsentries)
+  {
+    if (!strcmp(fs[i].filename, PATH))
+      dnode=i;
+    i++;
+  }
+  if (dnode==0)
+  {
+    printf_P(PSTR("ERROR: Path not found\n"));
+    return;
+  }
+
+  // look for contents inside this directory
+  for(i=0;i<fsentries;i++)
+  {
+    if (fs[i].parent_inode==dnode && !strcmp(argv[0],fs[i].filename))
+    {
+      fs[i].data(argc-1,argv);
+      return;
+    }
+  }
+  printf_P(PSTR("%s: Command not found\n"),argv[0]);
 }
 
 // get command from input
@@ -54,7 +116,7 @@ boolean getcmd(u8 buff[])
     // Check the buffer used
     if (buffp == ARGMAX)
     {
-      fprintf(stderr, "ERROR: Line too long, %d limit reached\n", ARGMAX);
+      fprintf_P(stderr,PSTR("ERROR: Line too long, %d limit reached\n"), ARGMAX);
       return false;
     }
   }

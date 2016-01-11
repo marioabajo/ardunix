@@ -8,5 +8,8 @@
 #define NCARGS 16
 #define IFS ' '
 
+
+#define ARRAY_SIZE(foo) (sizeof(foo)/sizeof(foo[0]))
+
 #endif
 

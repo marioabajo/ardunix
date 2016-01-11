@@ -31,11 +31,11 @@ static int uart_getchar (FILE *stream)
 void setup()
 {
     fdev_setup_stream (&uart, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
-    stdin = stdout = &uart;
+    stdin = stdout = stderr = &uart;
 
     Serial.begin(9600);
     while (!Serial);
-    printf("Ardunix 0.1 (29/12/2015)\n");
+    printf_P(PSTR("Ardunix 0.1 (29/12/2015)\n"));
 }
 
 void loop()

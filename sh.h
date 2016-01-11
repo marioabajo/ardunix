@@ -13,21 +13,30 @@ extern "C"{
   u8 splitcmd(u8 cmd[], char *args[]);
   u8 sh(u8 argc, char *argv[]);
   u8 ls(u8 argc, char *argv[]);
+  u8 freeMem (u8 argc, char *argv[]);
 #ifdef __cplusplus
 }
 #endif
 
+#define _FILE (const void (*)(u8, char**))
+#define ROOT 0
+#define BIN 1
+#define DEV 2
 
-const struct fsentry fs[fsentries]={
+// TODO: dynamize this structure at compile time
+const struct fsentry fs[]={
   // root
-  {NULL,"/",NULL,0x51},
- 
+  {ROOT,"/",NULL,0x45},
+  
   // first level directories
-  {&fs[0],"bin",NULL,0x51},
+  {ROOT,"bin",NULL,0x45},
+  {ROOT,"dev",NULL,0x45},
 
   // files
-  {&fs[1], "ls", (const void (*)(u8, char**)) ls, 0x50}
+  {BIN, "ls", _FILE ls, 0x5},
+  {BIN, "free", _FILE freeMem, 0x5}
 };
 
+//#define fsentries ARRAY_SIZE(fs)
 
 #endif
