@@ -1,6 +1,7 @@
 #ifndef SH_H
 #define SH_H
 
+#include <stdio.h>
 #include "env.h"
 #include "fs.h"
 
