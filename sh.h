@@ -5,6 +5,8 @@
 #include "env.h"
 #include "fs.h"
 
+extern struct fsentry fs;
+
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -18,6 +20,7 @@ extern "C"{
 }
 #endif
 
+/*
 #define _FILE (const void (*)(u8, char**))
 #define ROOT 0
 #define BIN 1
@@ -38,5 +41,6 @@ const struct fsentry fs[]={
 };
 
 //#define fsentries ARRAY_SIZE(fs)
+*/
 
 #endif

@@ -2,15 +2,30 @@
 #include <avr/pgmspace.h>
 #endif
 #include "sh.h"
+#include <string.h>
 
 // list files and directories
 u8 ls(u8 argc, char *argv[])
 {
-  u8 i;
-  for (i=0;i<fsentries;i++)
+  DIR *dir;
+
+  //TODO: add more options
+  if (argc > 0)
+    dir = opendir(argv[1]);
+  else
+    dir = opendir("/");
+
+  if (dir == NULL)
+    return -1;
+
+  while (dir != NULL)
   {
-    printf_P(PSTR("%s\n"),fs[i].filename);
+    //TODO: print more attributes
+    printf("%s\n", dir->filename);
+    dir = readdir(dir);
   }
+  argc--;
+
   return 0;
 }
 
@@ -44,44 +59,36 @@ u8 freeMem (u8 argc, char *argv[])
   /*extern int __heap_start, *__brkval;
   int v;
   printf("Free: %d\n", (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval));*/
+#else
+  printf("Free not implemented in this arch.\n");
 #endif
 }
 
 // parse command
 void parsecmd(u8 argc, char *argv[])
 {
-  // TODO: path /bin forced, make it dynamic
+  // TODO: just one path at this moment
+  const char *PATH="/bin";
+  DIR *dir;
 
-  u8 dnode=0;
-  u8 i=0;
-  const char *PATH="bin";
+  dir = opendir(PATH);
 
-  printf("opendir: %d\n",opendir("/bin/ls"));
-  
-  // look for directory inode
-  // TODO: split directories in path
-  while (dnode==0 && i<fsentries)
+  while (dir != NULL && strcmp(dir->filename, argv[0]))
+    dir = readdir(dir);
+
+  if (dir == NULL)
   {
-    if (!strcmp(fs[i].filename, PATH))
-      dnode=i;
-    i++;
-  }
-  if (dnode==0)
-  {
-    printf_P(PSTR("ERROR: Path not found\n"));
+#ifdef __AVR__
+    printf_P(PSTR("%s: Command not found\n"),argv[0]);
+#else
+    printf("%s: Command not found\n",argv[0]);
+#endif
     return;
   }
 
-  // look for contents inside this directory
-  for(i=0;i<fsentries;i++)
-  {
-    if (fs[i].parent_inode==dnode && !strcmp(argv[0],fs[i].filename))
-    {
-      fs[i].data(argc-1,argv);
-      return;
-    }
-  }
-  printf_P(PSTR("%s: Command not found\n"),argv[0]);
+  // execute the command
+  dir->data(argc-1, argv);
+  return;
 }
 
 // get command from input
@@ -116,7 +123,11 @@ boolean getcmd(u8 buff[])
     // Check the buffer used
     if (buffp == ARGMAX)
     {
+#ifdef __AVR__
       fprintf_P(stderr,PSTR("ERROR: Line too long, %d limit reached\n"), ARGMAX);
+#else
+      fprintf(stderr,"ERROR: Line too long, %d limit reached\n", ARGMAX);
+#endif
       return false;
     }
   }

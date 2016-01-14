@@ -6,26 +6,37 @@
 
 struct fsentry
 {
-	//const u8 inode;
-  const u8 parent_inode;
-	const char *filename;
-	const void (*data)(u8 argc, char *argv[]);  // Points to function in memory
-	u8 flags;  /* bits -> 87654321
-                             RWX
-                        \_________ Special file / normal file-directory
-                         \________ File/Directory
-	              bits -> 12345678  Type= 00000 File
-		                    RWX Type        01000 Directory
-		                                    10000 Especial file
-		                                    11000  |- Gpio
-		   */
+  char *filename;
+  union
+  {
+    struct fsentry *child;
+    u8 (*data)(u8, char**); // Points to function in memory
+  };
+  u8 flags;  /* bits -> 87654321
+                        |||||---
+                        ||--- \___ Permissions: RWX
+                        -- \______ Reserved
+                         \________ File type (see below)
+
+                Types            bits 87:
+                   - File             00
+                   - Directory        01
+                   - Link             10
+                   - Device           11
+	   */
+  struct fsentry *next;
 };
+
+#define DIR struct fsentry
 
 #ifdef __cplusplus
 extern "C"{
 #endif
   // Open a directory for reading. 
-  u8 opendir(const char* path);
+  DIR *opendir(const char* path);
+  DIR *readdir(DIR *dirp);
+  struct fsentry *fsentry_onelevel_find(struct fsentry *parent, const char *name, u8 namesize);
+  boolean fsentry_add(const char *name, struct fsentry *parent, u8 flags, void *function_name);
 #ifdef __cplusplus
 }
 #endif
@@ -58,33 +69,7 @@ poll(const char* path, struct fuse_file_info* fi, struct fuse_pollhandle* ph, un
     Poll for I/O readiness. If ph is non-NULL, when the filesystem is ready for I/O it should call fuse_notify_poll (possibly asynchronously) with the specified ph; this will clear all pending polls. The callee is responsible for destroying ph with fuse_pollhandle_destroy() when ph is no longer needed. 
  */
 
-/*#define _FILE (const void (*)(u8, char**))
-#define ROOT 0
-#define BIN 1
-#define DEV 2
+extern struct fsentry fs;
 
-extern _FILE ls;
-extern _FILE freeMem;
-
-// TODO: dynamize this structure at compile time
-const struct fsentry fs[]={
-  // root
-  {ROOT,"/",0,0x45},
-  
-  // first level directories
-  {ROOT,"bin",0,0x45},
-  {ROOT,"dev",0,0x45},
-
-  // files
-  {BIN, "ls", _FILE ls, 0x5},
-  {BIN, "free", _FILE freeMem, 0x5}
-};
-
-#define fsentries ARRAY_SIZE(fs)
-*/
-
-extern const struct fsentry fs[];
-#define fsentries ARRAY_SIZE(fs)
- 
 #endif
 

@@ -12,6 +12,6 @@ all: $(C_OBJS)
 	$(LINK.cc) $(C_OBJS) ardunix.o -o $(NAME)
 
 clean:
-	@- $(RM) $(C_OBJS) ardunix.o
+	@- $(RM) $(C_OBJS) ardunix.o $(NAME)
 
 distclean: clean

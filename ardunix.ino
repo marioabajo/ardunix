@@ -39,15 +39,26 @@ void setup()
 }
 
 void loop()
-{
-	sh(0,NULL);
-}
-
 #else
-
 int main(void)
+#endif
 {
+	DIR D_bin = {(char *)"bin", NULL, 0x85, NULL};
+	fs.child = &D_bin;
+
+	DIR D_dev = {(char *)"dev", NULL, 0x85, NULL};
+	D_bin.next = &D_dev;
+
+	DIR F_ls = {(char *)"ls", NULL, 0x5, NULL};
+	D_bin.child = &F_ls;
+	F_ls.data = &ls;
+
+	DIR F_free = {(char *)"free", NULL, 0x5, NULL};
+	F_ls.next = &F_free;
+	F_free.data = freeMem;
+	
+	//fsentry_add("bin",&fs,0x85,NULL);
+	//fsentry_add("dev",&fs,0x89,NULL);
 	sh(0,NULL);
 }
-#endif
 

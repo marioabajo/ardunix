@@ -3,7 +3,6 @@
 
 #include "defines.h"
 #include "types.h"
-#include <string.h>
 
 
 boolean env_add(struct dict_list **env, const char *key, const char *value);
