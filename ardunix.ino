@@ -3,8 +3,16 @@
  */
 
 #include "sh.h"
+#include <stdio.h>
 
 static FILE uart = {0} ;
+
+// Init root entry
+FS_FILE(free, freeMem, 0x5, NULL);
+FS_FILE(ls, ls, 0x5, &F_free);  
+FS_DIR(dev, NULL, 0x85, NULL);
+FS_DIR(bin, &F_ls, 0x85, &D_dev);
+struct fsentry fs = {(char *)"/",&D_bin,0x85,NULL};
 
 #ifdef __AVR__
 
@@ -43,30 +51,6 @@ void loop()
 int main(void)
 #endif
 {
-	//DIR D_bin = {(char *)"bin", NULL, 0x85, NULL};
-	//fs.child = &D_bin;
-
-	//DIR D_dev = {(char *)"dev", NULL, 0x85, NULL};
-	//D_bin.next = &D_dev;
-
-	//DIR F_ls = {(char *)"ls", NULL, 0x5, NULL};
-	//D_bin.child = &F_ls;
-	//F_ls.data = &ls;
-
-	//DIR F_free = {(char *)"free", NULL, 0x5, NULL};
-	//F_ls.next = &F_free;
-	//F_free.data = freeMem;
-
-  //#define FS_FILE(n, command, flags, next) DIR F_(n)={(char *)n, {.data = command}, flags, next};
-
-  //FS_FILE("free", freeMem, 0x5, NULL);
-  DIR F_free = {(char *)"free", {.data = freeMem}, 0x5, NULL};
-  DIR F_ls = {(char *)"ls", {.data = ls}, 0x5, &F_free};
-  DIR D_dev = {(char *)"dev", NULL, 0x85, NULL};
-  DIR D_bin = {(char *)"bin", {&F_ls}, 0x85, &D_dev};
-  
-	//fsentry_add("bin",&fs,0x85,NULL);
-	//fsentry_add("dev",&fs,0x89,NULL);
 	sh(0,NULL);
 }
 

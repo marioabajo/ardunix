@@ -1,11 +1,11 @@
+#include "env.h"
 #include <stdlib.h>
 #include <string.h>
-#include "env.h"
 
 //#include <stdio.h>
 
 // add/update new environment variable
-boolean env_add(struct dict_list **env, const char *key, const char *value)
+bool env_add(struct dict_list **env, const char *key, const char *value)
 {
 	struct dict_list *last=NULL, *a=*env;
 	// go to the last key checking if there is already a matching key
@@ -43,7 +43,7 @@ boolean env_add(struct dict_list **env, const char *key, const char *value)
 }
 
 // delete environment variable
-boolean env_del(struct dict_list **env, const char *key)
+bool env_del(struct dict_list **env, const char *key)
 {
 	struct dict_list *last=NULL, *a=*env;
 	while (a != NULL)

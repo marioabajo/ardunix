@@ -4,13 +4,14 @@
 #include <string.h>
 
 // Init root entry
-struct fsentry fs = {"/",NULL,0x89,NULL};
+//struct fsentry fs = {"/",NULL,0x89,NULL};
+//struct fsentry fs;
 
 // Open a directory for reading. 
 DIR *opendir(const char* path)
 {
   DIR *dir=fs.child;
-  u8 i=1,j=1;
+  uint8_t i=1,j=1;
 
   // TODO: only absolute paths allowed for now
   // Empty paths not allowed
@@ -47,7 +48,7 @@ DIR *readdir(DIR *dirp)
 	return dirp;
 }
 
-DIR *fsentry_onelevel_find(DIR *parent, const char *name, u8 namesize)
+DIR *fsentry_onelevel_find(DIR *parent, const char *name, uint8_t namesize)
 {
 	if (namesize == 0)
 		namesize = strlen(name);
@@ -65,7 +66,7 @@ DIR *fsentry_onelevel_find(DIR *parent, const char *name, u8 namesize)
 	return NULL;
 }
 
-boolean fsentry_add(const char *name, DIR *parent, u8 flags, void *function_name)
+bool fsentry_add(const char *name, DIR *parent, uint8_t flags, void *function_name)
 {
 	struct fsentry *temp;
 
@@ -109,10 +110,3 @@ boolean fsentry_add(const char *name, DIR *parent, u8 flags, void *function_name
 	return true;
 }
 
-/*boolean fsentry_add_file(const char *name, struct fsentry *parent, u8 flags, void *function_name)
-{
-	// find the parent directory
-	//if ((new = fsentry_search(&fs,parentname))==NULL)
-	//	return false;
-
-}*/

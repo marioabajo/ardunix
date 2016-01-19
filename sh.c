@@ -1,71 +1,11 @@
-#ifdef __AVR__
-#include <avr/pgmspace.h>
-#endif
 #include "sh.h"
+#include "env.h"
+#include "defines.h"
+#include <stdio.h>
 #include <string.h>
 
-// list files and directories
-u8 ls(u8 argc, char *argv[])
-{
-  DIR *dir;
-
-  //TODO: add more options
-  if (argc > 0)
-    dir = opendir(argv[1]);
-  else
-    dir = opendir("/");
-
-  if (dir == NULL)
-    return -1;
-
-  while (dir != NULL)
-  {
-    //TODO: print more attributes
-    printf("%s\n", dir->filename);
-    dir = readdir(dir);
-  }
-  argc--;
-
-  return 0;
-}
-
-// Print free ram
-u8 freeMem (u8 argc, char *argv[])
-{
-#ifdef __AVR__
-  extern unsigned int __heap_start;
-  extern void *__brkval;
-  struct __freelist{
-    size_t sz;
-    struct __freelist *nx;
-  } *current;
-  extern struct __freelist *__flp;
-  int free_memory;
-  int total = 0;
-
-  for (current = __flp; current; current = current->nx) {
-    total += 2; /* Add two bytes for the memory block's header  */
-    total += (int) current->sz;
-  }
-  
-  if ((int)__brkval == 0) {
-    free_memory = ((int)&free_memory) - ((int)&__heap_start);
-  } else {
-    free_memory = ((int)&free_memory) - ((int)__brkval);
-    free_memory += total;
-  }
-  printf("Free: %d\n",free_memory);
-  
-  /*extern int __heap_start, *__brkval;
-  int v;
-  printf("Free: %d\n", (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval));*/
-#else
-  printf("Free not implemented in this arch.\n");
-#endif
-}
-
 // parse command
-void parsecmd(u8 argc, char *argv[])
+void parsecmd(uint8_t argc, char *argv[])
 {
   // TODO: just one path at this moment
   const char *PATH="/bin";
@@ -78,11 +18,7 @@ void parsecmd(u8 argc, char *argv[])
 
   if (dir == NULL)
   {
-#ifdef __AVR__
     printf_P(PSTR("%s: Command not found\n"),argv[0]);
-#else
-    printf("%s: Command not found\n",argv[0]);
-#endif
     return;
   }
 
@@ -92,9 +28,9 @@ void parsecmd(u8 argc, char *argv[])
 }
 
 // get command from input
-boolean getcmd(u8 buff[])
+bool getcmd(uint8_t buff[])
 {
-  u8 buffp=0;
+  uint8_t buffp=0;
 
   do
   {
@@ -123,11 +59,7 @@ boolean getcmd(u8 buff[])
     // Check the buffer used
     if (buffp == ARGMAX)
     {
-#ifdef __AVR__
       fprintf_P(stderr,PSTR("ERROR: Line too long, %d limit reached\n"), ARGMAX);
-#else
-      fprintf(stderr,"ERROR: Line too long, %d limit reached\n", ARGMAX);
-#endif
       return false;
     }
   }
@@ -140,9 +72,9 @@ boolean getcmd(u8 buff[])
 }
 
 // Break command line into arguments separated by spaces
-u8 splitcmd(u8 cmd[], char *args[])
+uint8_t splitcmd(uint8_t cmd[], char *args[])
 {
-  u8 cont=0, pos=0, ipos=0, par=0;
+  uint8_t cont=0, pos=0, ipos=0, par=0;
 
   while(cmd[pos] != 0)
   {
@@ -174,7 +106,8 @@ u8 splitcmd(u8 cmd[], char *args[])
         // check NCARGS
         if (cont == NCARGS)
         {
-          fprintf(stderr,"ERROR: max number of args reached %d\n",NCARGS);
+          fprintf_P(stderr,PSTR("ERROR: max number of args reached "));
+          fprintf(stderr,"%d\n",NCARGS);
           return 0;
         }
         ipos=pos+1;
@@ -193,13 +126,13 @@ u8 splitcmd(u8 cmd[], char *args[])
   return cont;
 }
 
-u8 sh(u8 argc, char *argv[])
+uint8_t sh(uint8_t argc, char *argv[])
 {
   // input line buffer
-  u8 line[ARGMAX];
+  uint8_t line[ARGMAX];
   // array with pointers to arguments inside line buffer
   char *args[NCARGS];
-  u8 argsnum=0;
+  uint8_t argsnum=0;
   struct dict_list *env=NULL;
 
   // debug: environment functions
@@ -219,7 +152,7 @@ u8 sh(u8 argc, char *argv[])
   do
   {
     // show prompt
-    printf("# ");
+    printf_P(PSTR("# "));
 
     // Get command
     if (!getcmd(line))
