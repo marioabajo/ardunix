@@ -8,12 +8,17 @@
 static FILE uart = {0} ;
 
 // Init root entry
-FS_FILE(free, freeMem, 0x5, NULL);
-FS_FILE(ls, ls, 0x5, &F_free);  
-FS_DIR(dev, NULL, 0x85, NULL);
-FS_DIR(bin, &F_ls, 0x85, &D_dev);
-struct fsentry fs = {(char *)"/",&D_bin,0x85,NULL};
-
+FS_ROOT(bin);
+  FS_DIR_SUB(bin, 0x45, sh, dev);
+    FS_FILE(sh,   5, (void *)sh, ls);
+    FS_FILE(ls,   5, (void *)ls, free);
+    FS_FILE(free, 5, (void *)freeMem, times);
+    FS_FILE_LAST(times, 5, (void *)times);
+  FS_DIR(dev, 0x45, etc);
+  FS_DIR_LAST(etc, 0x45);
+//  FS_DIR_SUB_LAST(etc, 0x45, motd);
+//    FS_FILE_LAST(motd, 4, motd);
+    
 #ifdef __AVR__
 
 static int uart_putchar (char c, FILE *stream)
@@ -43,7 +48,6 @@ void setup()
 
     Serial.begin(9600);
     while (!Serial);
-    printf_P(PSTR("Ardunix 0.1 (29/12/2015)\n"));
 }
 
 void loop()
@@ -51,6 +55,18 @@ void loop()
 int main(void)
 #endif
 {
-	sh(0,NULL);
+  printf_P(PSTR("Ardunix 0.1 (29/12/2015)\n"));
+
+  #ifdef DEBUG
+  env_test();
+  #endif
+
+  struct stat aux;
+  const char *cmd[] = {"/bin/sh", NULL};
+
+  //sh(0,NULL);
+  execve(0, (char **)cmd, NULL);
+  printf_P(PSTR("Init process exited, waiting 10 seconds to restart"));
+  delay(10000);
 }
 

@@ -1,12 +1,11 @@
 #include "coreutils.h"
-#include "fs.h"
 #include <stdio.h>
 #include <string.h>
 
 // list files and directories
 uint8_t ls(uint8_t argc, char *argv[])
 {
-  DIR *dir;
+  /*DIR *dir;
 
   //TODO: add more options
   if (argc > 0)
@@ -23,7 +22,7 @@ uint8_t ls(uint8_t argc, char *argv[])
     printf("%s\n", dir->filename);
     dir = readdir(dir);
   }
-  argc--;
+  argc--;*/
 
   return 0;
 }
@@ -53,7 +52,7 @@ uint8_t freeMem (uint8_t argc, char *argv[])
     free_memory = ((int)&free_memory) - ((int)__brkval);
     free_memory += total;
   }
-  printf("Free: %d\n",free_memory);
+  printf_P(PSTR("Free: %d\n"),free_memory);
   
   /*extern int __heap_start, *__brkval;
   int v;
@@ -61,5 +60,18 @@ uint8_t freeMem (uint8_t argc, char *argv[])
 #else
   printf("Free not implemented in this arch.\n");
 #endif
+}
+
+uint8_t times (uint8_t argc, char *argv[])
+{
+  long t1=millis();
+
+  if (argc>0)
+  {
+    //TODO: pass env to execve
+    execve(argc-1,&(argv[1]),NULL);
+  }
+  printf_P(PSTR("millis: %l\n"),millis()-t1);
+  return 0;
 }
 

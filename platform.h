@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+//#define DEBUG 1
 
 /*
  *  Arduino
@@ -20,7 +21,24 @@
  * PC
  */
 #else
+  #include <time.h>
+
+  #ifdef __cplusplus
+  extern "C"{
+  #endif
+  void delay(long ms);
+  unsigned int pgm_read_word(uint16_t *d);
+  #ifdef __cplusplus
+  }
+  #endif
+  #define millis() (long) time(NULL)
+  #define pgm_read_byte(x) *(x)
+  #define pgm_read_ptr(x) *(x)
+  #define pgm_read_word_near(x) *(x)
+  #define PROGMEM
   #define PSTR(s) (s)
+  #define strcpy_P strcpy
+  #define strncmp_P strncmp
   #define fprintf_P fprintf
   #define printf_P printf
 #endif

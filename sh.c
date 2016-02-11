@@ -1,30 +1,20 @@
 #include "sh.h"
 #include "env.h"
 #include "defines.h"
+#include "kernel.h"
 #include <stdio.h>
 #include <string.h>
 
 // parse command
 void parsecmd(uint8_t argc, char *argv[])
 {
-  // TODO: just one path at this moment
-  const char *PATH="/bin";
-  DIR *dir;
-
-  dir = opendir(PATH);
-
-  while (dir != NULL && strcmp(dir->filename, argv[0]))
-    dir = readdir(dir);
-
-  if (dir == NULL)
-  {
-    printf_P(PSTR("%s: Command not found\n"),argv[0]);
-    return;
-  }
-
-  // execute the command
-  dir->data(argc-1, argv);
-  return;
+  // TODO: check if the line is a reserved word, variable assigment, etc...
+  // TODO: pass environment
+  // DEBUG
+  /*uint8_t i;
+  for (i=0; i<argc; i++)
+    printf("DEBUG parsecmd: %d %s\n", i, argv[i]);*/
+  execve(argc, argv, NULL);
 }
 
 // get command from input
@@ -172,6 +162,7 @@ uint8_t sh(uint8_t argc, char *argv[])
     for (int i=0;i<argsnum;i++)
       printf("Arg %d: %s\n", i, args[i]);*/
     
+  // TODO: Implement an exit mechanism
   } while(1);
 }
 

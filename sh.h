@@ -4,9 +4,10 @@
 #include "coreutils.h"
 // include this to initialice the rootfs in main
 #include "fs.h"
+#include "env.h"
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
   void parsecmd(uint8_t argc, char *argv[]);
   bool getcmd(uint8_t buff[]);

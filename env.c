@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#include <stdio.h>
-
 // add/update new environment variable
 bool env_add(struct dict_list **env, const char *key, const char *value)
 {
@@ -78,4 +76,23 @@ char * env_get(struct dict_list *env, const char *key)
 	return NULL;
 }
 
+#ifdef DEBUG
+void env_test()
+{
+  struct dict_list *env=NULL;
 
+  // debug: environment functions
+  printf("env: C?  %s\n",env_get(env,"C")); // get nonexistant var, empty env
+  printf("env: del B  (%d)\n", env_del(&env,"B")); // del nonexistant var, empty env
+  printf("env: A = 1  (%d)\n", env_add(&env,"A","1")); // add var
+  printf("env: A?  %s\n",env_get(env,"A")); // get var
+  printf("env: HOME = aSd  (%d)\n", env_add(&env,"HOME","aSd")); // add vars
+  printf("env: B = 23  (%d)\n", env_add(&env,"B","23"));
+  printf("env: A = 4  (%d)\n", env_add(&env,"A","4"));
+  printf("env: A?  %s\n",env_get(env,"A")); // get var
+  printf("env: del A  (%d)\n", env_del(&env,"A")); // del var
+  printf("env: A?  %s\n",env_get(env,"A")); // get deleted var
+  printf("env: B?  %s\n",env_get(env,"B")); // get var next to deleted
+  printf("env: HOME?  %s\n",env_get(env,"HOME"));
+}
+#endif
