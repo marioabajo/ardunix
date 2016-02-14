@@ -6,15 +6,18 @@
 #include <string.h>
 
 // parse command
-void parsecmd(uint8_t argc, char *argv[])
+uint8_t parsecmd(uint8_t argc, char *argv[])
 {
   // TODO: check if the line is a reserved word, variable assigment, etc...
   // TODO: pass environment
-  // DEBUG
-  /*uint8_t i;
-  for (i=0; i<argc; i++)
-    printf("DEBUG parsecmd: %d %s\n", i, argv[i]);*/
-  execve(argc, argv, NULL);
+
+  // Check for reserved words
+  if (strncmp_P(argv[0],PSTR("exit"),5) == 0)
+    // exit
+    return 1;
+  else
+    // execute the command
+    execve(argc, argv, NULL);
 }
 
 // get command from input
@@ -96,8 +99,7 @@ uint8_t splitcmd(uint8_t cmd[], char *args[])
         // check NCARGS
         if (cont == NCARGS)
         {
-          fprintf_P(stderr,PSTR("ERROR: max number of args reached "));
-          fprintf(stderr,"%d\n",NCARGS);
+          fprintf_P(stderr,PSTR("ERROR: max number of args reached %d\n"),NCARGS);
           return 0;
         }
         ipos=pos+1;
@@ -123,6 +125,7 @@ uint8_t sh(uint8_t argc, char *argv[])
   // array with pointers to arguments inside line buffer
   char *args[NCARGS];
   uint8_t argsnum=0;
+  uint8_t exit_flag=1;
   struct dict_list *env=NULL;
 
   // debug: environment functions
@@ -155,7 +158,12 @@ uint8_t sh(uint8_t argc, char *argv[])
       continue;
 
     // parse line
-    parsecmd(argsnum, args);
+    switch (parsecmd(argsnum, args))
+    {
+      case 1:  // exit shell
+        exit_flag=0;
+        break;
+    }
 
     // debug: split command
     /*printf("total args: %d\n", argsnum);
@@ -163,7 +171,9 @@ uint8_t sh(uint8_t argc, char *argv[])
       printf("Arg %d: %s\n", i, args[i]);*/
     
   // TODO: Implement an exit mechanism
-  } while(1);
+  } while(exit_flag);
+
+  return 0;
 }
 
 

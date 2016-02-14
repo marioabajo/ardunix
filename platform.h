@@ -7,8 +7,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-//#define DEBUG 1
+#include "defines.h"
 
 /*
  *  Arduino

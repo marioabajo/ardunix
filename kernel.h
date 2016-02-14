@@ -3,6 +3,7 @@
 
 #include "platform.h"
 #include "fs.h"
+#include "progfs.h"
 
 #ifdef __cplusplus
 extern "C"{

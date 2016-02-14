@@ -8,16 +8,16 @@
 static FILE uart = {0} ;
 
 // Init root entry
-FS_ROOT(bin);
-  FS_DIR_SUB(bin, 0x45, sh, dev);
-    FS_FILE(sh,   5, (void *)sh, ls);
-    FS_FILE(ls,   5, (void *)ls, free);
-    FS_FILE(free, 5, (void *)freeMem, times);
-    FS_FILE_LAST(times, 5, (void *)times);
-  FS_DIR(dev, 0x45, etc);
-  FS_DIR_LAST(etc, 0x45);
-//  FS_DIR_SUB_LAST(etc, 0x45, motd);
-//    FS_FILE_LAST(motd, 4, motd);
+PROGFS_ROOT(bin);
+  PROGFS_DIR_SUB(bin, 0x45, sh, dev);
+    PROGFS_FILE(sh,   5, (void *)sh, ls);
+    PROGFS_FILE(ls,   5, (void *)ls, free);
+    PROGFS_FILE(free, 5, (void *)freeMem, times);
+    PROGFS_FILE_LAST(times, 5, (void *)times);
+  PROGFS_DIR(dev, 0x45, etc);
+  PROGFS_DIR_LAST(etc, 0x45);
+//  PROGFS_DIR_SUB_LAST(etc, 0x45, motd);
+//    PROGFS_FILE_LAST(motd, 4, motd);
     
 #ifdef __AVR__
 
@@ -55,7 +55,7 @@ void loop()
 int main(void)
 #endif
 {
-  printf_P(PSTR("Ardunix 0.1 (29/12/2015)\n"));
+  printf_P(PSTR("Ardunix 0.2 (11/02/2016)\n"));
 
   #ifdef DEBUG
   env_test();
@@ -66,7 +66,7 @@ int main(void)
 
   //sh(0,NULL);
   execve(0, (char **)cmd, NULL);
-  printf_P(PSTR("Init process exited, waiting 10 seconds to restart"));
+  printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));
   delay(10000);
 }
 

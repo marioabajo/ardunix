@@ -3,8 +3,6 @@
 
 #include "platform.h"
 
-#define FILENAME_MAX 16
-
 /* Structure of the filesystem in flash. Each entry is composed of one of this structure.
 
    / (root) the rest of directories are child of this
@@ -34,15 +32,15 @@
 */
 typedef struct fsentry
 {
-  const char *filename;
-  const uint8_t flags;
+  char *filename;
+  uint8_t flags;
   union
   {
     const struct fsentry *child;
     const void *data;
   };
-  const uint16_t size;
-  const struct fsentry *next;
+  uint16_t size;
+  struct fsentry *next;
 } DIR;
 
 struct dirent
@@ -53,7 +51,6 @@ struct dirent
   uint16_t size;
 };
 
-
 struct stat 
 {
   unsigned int st_ino;         /* inode number */
@@ -61,42 +58,6 @@ struct stat
   uint8_t  st_size;        /* total size, in bytes */
 };
 
-#define FS_FILE(fname, flags, func, next) \
-  extern const DIR FS_##next; \
-  const char text_##fname[] PROGMEM = #fname;\
-  const DIR FS_##fname PROGMEM = {&text_##fname[0], flags, {.data = func}, 0, &FS_##next}
-
-#define FS_FILE_LAST(fname, flags, func) \
-  const char text_##fname[] PROGMEM = #fname; \
-  const DIR FS_##fname PROGMEM = {&text_##fname[0], flags, {.data = func}, 0, NULL}
-
-#define FS_DIR_SUB(fname, flags, child, next) \
-  extern const DIR FS_##next; \
-  extern const DIR FS_##child; \
-  const char text_##fname[] PROGMEM = #fname;\
-  const DIR FS_##fname PROGMEM = {&text_##fname[0], flags, {&FS_##child}, 0, &FS_##next}
-
-#define FS_DIR(fname, flags, next) \
-  extern const DIR FS_##next; \
-  const char text_##fname[] PROGMEM = #fname;\
-  const DIR FS_##fname PROGMEM = {&text_##fname[0], flags, {NULL}, 0, &FS_##next}
-
-#define FS_DIR_SUB_LAST(fname, flags, child) \
-  extern const DIR FS_##child; \
-  const char text_##fname[] PROGMEM = #fname; \
-  const DIR FS_##fname PROGMEM = {&text_##fname[0], flags, {&FS_##child}, 0, NULL}
-  
-#define FS_DIR_LAST(fname, flags) \
-  const char PROGMEM text_##fname[] PROGMEM = #fname; \
-  const DIR FS_##fname PROGMEM = {&text_##fname[0], flags, {NULL}, 0, NULL}
-
-#define FS_ROOT(child) \
-  extern const DIR PROGMEM FS_##child; \
-  const char text_root[] PROGMEM = "/"; \
-  const DIR FS_ROOT PROGMEM = {&text_root[0], 0x45, {&FS_##child}, 0, NULL}; \
-  DIR *ProgFs = (DIR *)&FS_ROOT
-
-extern DIR *ProgFs;
 
 #ifdef __cplusplus
 extern "C"{
