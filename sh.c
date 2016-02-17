@@ -36,7 +36,7 @@ bool getcmd(uint8_t buff[])
     {
       // backspace
       case 0x08:
-        // TODO: go back une position in screen
+        // TODO: go back one position in screen
         buff[buffp]=0;
         break;
       // horizontal tab

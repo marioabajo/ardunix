@@ -21,7 +21,7 @@ PROGFS_ROOT(bin);
     
 #ifdef __AVR__
 
-static int uart_putchar (char c, FILE *stream)
+int uart_putchar (char c, FILE *stream)
 {
     if (c == '\n')
       Serial.write('\r');
@@ -29,7 +29,7 @@ static int uart_putchar (char c, FILE *stream)
     return 0 ;
 }
 
-static int uart_getchar (FILE *stream)
+int uart_getchar (FILE *stream)
 {
   char a;
 
@@ -55,7 +55,7 @@ void loop()
 int main(void)
 #endif
 {
-  printf_P(PSTR("Ardunix 0.2 (11/02/2016)\n"));
+  printf_P(PSTR("Ardunix 0.2 (17/02/2016)\n"));
 
   #ifdef DEBUG
   env_test();

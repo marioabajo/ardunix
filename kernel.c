@@ -8,7 +8,6 @@ uint8_t execve(uint8_t argc, char *argv[], char *envp[])
   const char *PATH="/bin";
   struct stat file;
   uint8_t num=0;
-  DIR *dir;
 
   if (argv[0] == NULL)
     return -1;
@@ -24,11 +23,13 @@ uint8_t execve(uint8_t argc, char *argv[], char *envp[])
   if (argc > 0)
     num = argc-1;
 
-  //TODO FIX
-  dir = (DIR *)file.st_ino;
+  //TODO FIX, terrible workaround
+  PFS *dir;
+  dir = (PFS *)file.st_ino;
 
   //DEBUG
-  //printf("DEBUG execve: %d %x %x %x\n", num, file.st_mode, dir, pgm_read_ptr(&(dir->data)));
+  //extern ls;
+  //printf("DEBUG execve: %d %x %x %x %x %x\n", num, file.st_mode, file.st_ino, dir->data, pgm_read_ptr(&(dir->data)), &(ls));
   return ((uint8_t (*)(uint8_t argc, char *argv[])) pgm_read_ptr(&(dir->data)))(num, argv);
 }
 

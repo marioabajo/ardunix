@@ -5,7 +5,9 @@
 // list files and directories
 uint8_t ls(uint8_t argc, char *argv[])
 {
-  /*DIR *dir;
+  DIR *dir;
+  struct dirent *entry;
+  char c;
 
   //TODO: add more options
   if (argc > 0)
@@ -16,13 +18,34 @@ uint8_t ls(uint8_t argc, char *argv[])
   if (dir == NULL)
     return -1;
 
-  while (dir != NULL)
+  entry = readdir(dir);
+  while (entry != NULL)
   {
-    //TODO: print more attributes
-    printf("%s\n", dir->filename);
-    dir = readdir(dir);
+    switch(entry->flags & 0xc0)
+    {
+      case 0x0:  // File
+        c = '-';
+        break;
+      case 0x40: // Directory
+        c = 'd';
+        break;
+      case 0x80: // Link
+        c = 'l';
+        break;
+      case 0xc0: // Device
+        c = 'c'; // TODO: Another case for each type of dev
+    }
+    putchar(c);
+    c = (entry->flags & 0x4) ? 'r' : '-';
+    putchar(c);
+    c = (entry->flags & 0x2) ? 'w' : '-';
+    putchar(c);
+    c = (entry->flags & 0x1) ? 'x' : '-';
+    putchar(c);
+    printf(" %4d %s\n", entry->size, entry->d_name);
+    entry = readdir(dir);
   }
-  argc--;*/
+  closedir(dir);
 
   return 0;
 }

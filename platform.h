@@ -33,10 +33,10 @@
   #define millis() (long) time(NULL)
   #define pgm_read_byte(x) *(x)
   #define pgm_read_ptr(x) *(x)
-  #define pgm_read_word_near(x) *(x)
   #define PROGMEM
   #define PSTR(s) (s)
   #define strcpy_P strcpy
+  #define strncpy_P strncpy
   #define strncmp_P strncmp
   #define fprintf_P fprintf
   #define printf_P printf

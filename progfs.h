@@ -60,6 +60,9 @@ extern "C" {
 #endif
   int progfs_stat(const char *pathname, struct stat *buf);
   DIR *progfs_opendir(const char *path);
+  uint8_t progfs_closedir(DIR *dirp);
+  struct dirent *progfs_readdir(DIR *dirp);
+  void progfs_rewinddir(DIR *dirp);
 #ifdef __cplusplus
 }
 #endif
