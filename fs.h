@@ -62,9 +62,9 @@ extern "C"{
   DIR *opendir(const char* path);
   uint8_t closedir(DIR *dirp);
   struct dirent *readdir(DIR *dirp);
-  DIR *fsentry_sublevel_find(const char *filename);
-  struct fsentry *fsentry_onelevel_find(struct fsentry *parent, const char *name, uint8_t namesize);
-  bool fsentry_add(const char *name, struct fsentry *parent, uint8_t flags, void *function_name);
+  //DIR *fsentry_sublevel_find(const char *filename);
+  //struct fsentry *fsentry_onelevel_find(struct fsentry *parent, const char *name, uint8_t namesize);
+  //bool fsentry_add(const char *name, struct fsentry *parent, uint8_t flags, void *function_name);
 #ifdef __cplusplus
 }
 #endif

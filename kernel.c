@@ -13,7 +13,7 @@ uint8_t execve(uint8_t argc, char *argv[], char *envp[])
     return -1;
 
   // absoulte path
-  if (stat(argv[0],&file) != 0 || !file.st_mode & 0x1)
+  if (stat(argv[0],&file) != 0 || (file.st_mode & 0xc1) != 1)
   {
     printf_P(PSTR("%s: Command not found\n"),argv[0]);
     return -1;

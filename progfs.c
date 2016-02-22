@@ -49,7 +49,7 @@ int progfs_stat(const char *pathname, struct stat *buf)
       dir = (PFS *)pgm_read_ptr(&(dir->next));
 
     // DEBUG
-    //char filename[MAX_FILENAME];
+    //char filename[FILENAME_MAX];
     //strncpy_P(filename, (DIR *)pgm_read_ptr(&(dir->filename)), 16);
     //printf("DEBUG: %s %d %s %d\n", pathname+i, j-i, filename, strncmp_P(pathname+i, (DIR *)pgm_read_ptr(&(dir->filename)), j-i));
 
@@ -57,7 +57,7 @@ int progfs_stat(const char *pathname, struct stat *buf)
     if (dir == NULL)
       return -1;
 
-    // Found a match, check if the is more components left in the pathname
+    // Found a match, check if there is more components left in the pathname
     // to look for
     if (pathname[j]==0)
     {
@@ -94,7 +94,8 @@ DIR *progfs_opendir(const char *path)
 	return NULL;
 
   // Position to the first child
-  pfsd = (PFS *)pgm_read_ptr(&(file.st_ino));
+  //pfsd = (PFS *)pgm_read_ptr(&(file.st_ino));
+  pfsd = (PFS *)file.st_ino;
   d->dd_size = pfsd->size;
   d->dd_buf = pfsd->child;
   d->dd_loc = 0;
@@ -107,6 +108,7 @@ DIR *progfs_opendir(const char *path)
 
 uint8_t progfs_closedir(DIR *dirp)
 {
+  free(dirp->dd_ent);
   free(dirp);
   return 0;
 }
@@ -134,7 +136,7 @@ struct dirent *progfs_readdir(DIR *dirp)
   result->flags = (uint8_t)pgm_read_byte(&(entry->flags));
   result->size = (uint16_t)pgm_read_word((uint16_t *)&(entry->size));
 
-  // Load th epointer to the data if it's a file
+  // Load the pointer to the data if it's a file
   if (result->flags & 0x40)
     result->d_ino = 0;
   else
