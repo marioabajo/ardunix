@@ -97,7 +97,7 @@ DIR *progfs_opendir(const char *path)
   //pfsd = (PFS *)pgm_read_ptr(&(file.st_ino));
   pfsd = (PFS *)file.st_ino;
   d->dd_size = pfsd->size;
-  d->dd_buf = pfsd->child;
+  d->dd_buf = (PFS *)pgm_read_ptr(&(pfsd->child));
   d->dd_loc = 0;
   d->dd_ent = (struct dirent *)malloc(sizeof(struct dirent));
   if (d->dd_ent == NULL)
