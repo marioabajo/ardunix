@@ -5,58 +5,20 @@
 int progfs_stat(const char *pathname, struct stat *buf)
 {
   PFS *dir = ProgFs;
-  uint8_t i=0,j=0;
+  uint8_t i=1,j=1;
 
   // Only absolute paths allowed for now
   // Empty paths not allowed
   // TODO: normalize pathnames
-  if (pathname == NULL || pathname[0] != '/' || pathname[0] == 0)
+  if (pathname[0] == 0 || pathname[0] != '/')
     return -1;
-
-  // If path is "/" return root element
-  if (pathname[0] == '/' && pathname[1] == 0)
-  {
-    buf->st_ino = (long)dir;
-    buf->st_mode = (uint8_t)pgm_read_byte(&(dir->flags));
-    buf->st_size = (uint16_t)pgm_read_word(&(dir->size));
-    return 0;
-  }
-
-  // Lets look inside the root's children
-  // /  (root)
-  // |- ...
-  // ...
-  dir = (PFS *)pgm_read_ptr(&(dir->child));
 
   // Now, examine the pathname and start digging into the directory structure
   // while reading the pathname elementes: /element1/element2/....
   // vars i and j will be pointing to the beging and the end of each element
   // inside the string, just to save some bytes of ram
-  while (pathname[j] != 0)
+  for (;;)
   {
-    // Advance in the path string to the next component, delimited by i and j
-    i = j + 1;
-    do
-    {
-      j++;
-    } while (pathname[j]!='/' && pathname[j]!=0);
-
-    //DEBUG// printf("NEXT:%d, %d: %s %d\n", i, j, pathname+i, j-i);
-
-    // loop within the elements of the filesystem in the same level and compare
-    // the name with the name of the current element being watched in pathname
-    while (dir != NULL && (strncmp_P(pathname+i, (char *)pgm_read_ptr(&(dir->filename)), j-i) != 0))
-      dir = (PFS *)pgm_read_ptr(&(dir->next));
-
-    // DEBUG
-    //char filename[FILENAME_MAX];
-    //strncpy_P(filename, (DIR *)pgm_read_ptr(&(dir->filename)), 16);
-    //printf("DEBUG: %s %d %s %d\n", pathname+i, j-i, filename, strncmp_P(pathname+i, (DIR *)pgm_read_ptr(&(dir->filename)), j-i));
-
-    // element not found
-    if (dir == NULL)
-      return -1;
-
     // Found a match, check if there is more components left in the pathname
     // to look for
     if (pathname[j]==0)
@@ -74,10 +36,24 @@ int progfs_stat(const char *pathname, struct stat *buf)
 
     // Get into the child object
     dir = (PFS *)pgm_read_ptr(&(dir->child));
-  }
 
-  return -1;
-  
+    // Advance in the path string to the next component, delimited by i and j
+    do
+      j++;
+    while (pathname[j]!='/' && pathname[j]!=0);
+
+    // loop within the elements of the filesystem in the same level and compare
+    // the name with the name of the current element being watched in pathname
+    // TODO: strncmp innecesarily slow, review implementation
+    while (dir != NULL && (strncmp_P(pathname+i, (char *)pgm_read_ptr(&(dir->filename)), j-i) != 0))
+      dir = (PFS *)pgm_read_ptr(&(dir->next));
+
+    // element not found
+    if (dir == NULL)
+      return -1;
+
+    i = j + 1;
+  }
 }
 
 DIR *progfs_opendir(const char *path)
@@ -94,7 +70,6 @@ DIR *progfs_opendir(const char *path)
 	return NULL;
 
   // Position to the first child
-  //pfsd = (PFS *)pgm_read_ptr(&(file.st_ino));
   pfsd = (PFS *)file.st_ino;
   d->dd_size = pfsd->size;
   d->dd_buf = (PFS *)pgm_read_ptr(&(pfsd->child));

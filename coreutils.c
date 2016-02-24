@@ -92,9 +92,10 @@ uint8_t times (uint8_t argc, char *argv[])
 {
   unsigned long t1 = millis();
 
-  if (argc>0)
+  if (argc > 0)
   {
     //TODO: pass env to execve
+    //FIXME: look like it's not passing correctly the parameters to the command
     execve(argc-1, &(argv[1]), NULL);
   }
   printf_P(PSTR("millis: %ld\n"), millis() - t1);
