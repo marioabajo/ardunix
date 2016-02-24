@@ -1,6 +1,9 @@
 #include "coreutils.h"
 #include <stdio.h>
 #include <string.h>
+#ifdef __AVR__
+#include <Arduino.h>
+#endif
 
 // list files and directories
 uint8_t ls(uint8_t argc, char *argv[])
@@ -87,14 +90,14 @@ uint8_t freeMem (uint8_t argc, char *argv[])
 
 uint8_t times (uint8_t argc, char *argv[])
 {
-  long t1=millis();
+  unsigned long t1 = millis();
 
   if (argc>0)
   {
     //TODO: pass env to execve
-    execve(argc-1,&(argv[1]),NULL);
+    execve(argc-1, &(argv[1]), NULL);
   }
-  printf_P(PSTR("millis: %l\n"),millis()-t1);
+  printf_P(PSTR("millis: %ld\n"), millis() - t1);
   return 0;
 }
 

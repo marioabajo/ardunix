@@ -10,7 +10,7 @@ void delay(long ms)
   nanosleep(&d,NULL);
 }
 
-unsigned int pgm_read_word(uint16_t *d)
+unsigned int pgm_read_word(const uint16_t *d)
 {
   return *d;
 }

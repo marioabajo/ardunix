@@ -2,8 +2,9 @@
 #define DEFINES_H
 
 // ARGMAX never bigger than 256, uint8_t used as index
-#define ARGMAX 100
+#define ARGMAX 80
 #define FILENAME_MAX 16
+#define PATH_MAX 64
 #define NCARGS 16
 #define IFS ' '
 

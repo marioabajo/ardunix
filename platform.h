@@ -26,7 +26,7 @@
   extern "C"{
   #endif
   void delay(long ms);
-  unsigned int pgm_read_word(uint16_t *d);
+  unsigned int pgm_read_word(const uint16_t *d);
   #ifdef __cplusplus
   }
   #endif

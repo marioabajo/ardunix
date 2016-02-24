@@ -61,11 +61,10 @@ int main(void)
   env_test();
   #endif
 
-  struct stat aux;
-  const char *cmd[] = {"/bin/sh", NULL};
+  //const char *cmd[] = {"/bin/sh", NULL};
 
-  //sh(0,NULL);
-  execve(0, (char **)cmd, NULL);
+  sh(0,NULL);
+  //execve(0, (char **)cmd, NULL);
   printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));
   delay(10000);
 }
