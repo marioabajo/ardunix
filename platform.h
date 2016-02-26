@@ -35,8 +35,10 @@
   #define pgm_read_ptr(x) *(x)
   #define PROGMEM
   #define PSTR(s) (s)
+  #define strlen_P strlen
   #define strcpy_P strcpy
   #define strncpy_P strncpy
+  #define strcmp_P strcmp
   #define strncmp_P strncmp
   #define fprintf_P fprintf
   #define printf_P printf

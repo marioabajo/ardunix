@@ -5,7 +5,7 @@
 int progfs_stat(const char *pathname, struct stat *buf)
 {
   PFS *dir = ProgFs;
-  uint8_t i=1,j=1;
+  uint8_t i=1,j=1, aux;
 
   // Only absolute paths allowed for now
   // Empty paths not allowed
@@ -45,8 +45,10 @@ int progfs_stat(const char *pathname, struct stat *buf)
     // loop within the elements of the filesystem in the same level and compare
     // the name with the name of the current element being watched in pathname
     // TODO: strncmp innecesarily slow, review implementation
-    while (dir != NULL && (strncmp_P(pathname+i, (char *)pgm_read_ptr(&(dir->filename)), j-i) != 0))
+    aux = strlen_P((char *)pgm_read_ptr(&(dir->filename)));
+    while (dir != NULL && (strncmp_P(pathname+i, (char *)pgm_read_ptr(&(dir->filename)), j-i > aux ? j-i : aux) != 0))
       dir = (PFS *)pgm_read_ptr(&(dir->next));
+    }
 
     // element not found
     if (dir == NULL)
