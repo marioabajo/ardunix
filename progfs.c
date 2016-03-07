@@ -5,7 +5,7 @@
 int progfs_stat(const char *pathname, struct stat *buf)
 {
   PFS *dir = ProgFs;
-  uint8_t i=1,j=1, aux;
+  uint8_t i=1,j=1,k;
 
   // Only absolute paths allowed for now
   // Empty paths not allowed
@@ -15,8 +15,8 @@ int progfs_stat(const char *pathname, struct stat *buf)
 
   // Now, examine the pathname and start digging into the directory structure
   // while reading the pathname elementes: /element1/element2/....
-  // vars i and j will be pointing to the beging and the end of each element
-  // inside the string, just to save some bytes of ram
+  // vars i and j will be pointing to the begining and the end of each element
+  // inside the string
   for (;;)
   {
     // Found a match, check if there is more components left in the pathname
@@ -44,15 +44,28 @@ int progfs_stat(const char *pathname, struct stat *buf)
 
     // loop within the elements of the filesystem in the same level and compare
     // the name with the name of the current element being watched in pathname
-    // TODO: strncmp innecesarily slow, review implementation
-    aux = strlen_P((char *)pgm_read_ptr(&(dir->filename)));
-    while (dir != NULL && (strncmp_P(pathname+i, (char *)pgm_read_ptr(&(dir->filename)), j-i > aux ? j-i : aux) != 0))
-      dir = (PFS *)pgm_read_ptr(&(dir->next));
-    }
+    k = 0;
+    for (;;)
+    {
+      // element not found
+      if (dir == NULL)
+        return -1;
 
-    // element not found
-    if (dir == NULL)
-      return -1;
+      // Check if characters differs, if so, reset and procced with the next
+      // element of the directory
+      if (pgm_read_ptr(&(dir->filename[k])) != (pathname[i + k]))
+      {
+        k = 0;
+        dir = (PFS *)pgm_read_ptr(&(dir->next));
+        continue;
+      }
+
+      // string reach an end. I think we have a match!
+      if (k == j-i-1 && (pgm_read_ptr(&(dir->filename[k+1])) == '/' || pgm_read_ptr(&(dir->filename[k+1])) == 0))
+        break;
+
+      k++;
+    }
 
     i = j + 1;
   }
