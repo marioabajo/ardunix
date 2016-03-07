@@ -28,7 +28,11 @@ Objectives for v.1:
 - opendir
     Open a directory for reading the contents
 - readdir
-    Read next directory entry
-- access
+    Read next directory entry (call opendir first)
+- closedir
+    Close directory open by opendir call (needed to free memory used)
+- rewinddir
+    Point to the first element of the directory in a dir opened by opendir
+- stat
     Check access to a file, return pointer to it
 
