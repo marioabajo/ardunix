@@ -7,6 +7,8 @@
 #define PATH_MAX 64
 #define NCARGS 16
 #define IFS ' '
+// TODO: just one path at this moment
+#define PATH "/bin"
 
 
 //#define DEBUG 1
