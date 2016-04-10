@@ -6,7 +6,7 @@
 #endif
 
 // list files and directories
-uint8_t ls(uint8_t argc, char *argv[])
+uint8_t ls(uint8_t argc, char *argv[], struct dict_list **env)
 {
   DIR *dir;
   struct dirent *entry;
@@ -54,7 +54,7 @@ uint8_t ls(uint8_t argc, char *argv[])
 }
 
 // Print free ram
-uint8_t freeMem (uint8_t argc, char *argv[])
+uint8_t freeMem (uint8_t argc, char *argv[], struct dict_list **env)
 {
 #ifdef __AVR__
   extern unsigned int __heap_start;
@@ -88,7 +88,7 @@ uint8_t freeMem (uint8_t argc, char *argv[])
 #endif
 }
 
-uint8_t times (uint8_t argc, char *argv[])
+uint8_t times (uint8_t argc, char *argv[], struct dict_list **env)
 {
   unsigned long t1 = millis();
 
@@ -102,3 +102,16 @@ uint8_t times (uint8_t argc, char *argv[])
   return 0;
 }
 
+// list environment variables
+uint8_t set(uint8_t argc, char *argv[], struct dict_list **env)
+{
+  struct dict_list *c=*env;
+
+  while (c != NULL)
+  {
+    printf("%s=%s\n", c->key, c->value);
+    c = (struct dict_list *) c->next;
+  }
+
+  return 0;
+}

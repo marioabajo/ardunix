@@ -1,6 +1,6 @@
 NAME=main
 
-CFLAGS=-Os -fno-builtin
+CFLAGS=-Os -fno-builtin -g
 
 C_SRCS=$(wildcard *.c)
 C_OBJS=$(C_SRCS:.c=.o)

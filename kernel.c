@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-uint8_t execve(uint8_t argc, char *argv[], char *envp[])
+uint8_t execve(uint8_t argc, char *argv[], struct dict_list **envp)
 {
   struct stat file;
   uint8_t aux;
@@ -55,10 +55,11 @@ uint8_t execve(uint8_t argc, char *argv[], char *envp[])
   //     interpreter) and execute it.
   PFS *dir;
   dir = (PFS *)file.st_ino;
+  
 
   //DEBUG
   //extern ls;
   //printf("DEBUG execve: %d %x %x %x %x %x\n", aux, file.st_mode, file.st_ino, dir->data, pgm_read_ptr(&(dir->data)), &(ls));
-  return ((uint8_t (*)(uint8_t argc, char *argv[])) pgm_read_ptr(&(dir->data)))(aux, argv);
+  return ((uint8_t (*)(uint8_t argc, char *argv[], struct dict_list **envp)) pgm_read_ptr(&(dir->data)))(aux, argv, envp);
 }
 

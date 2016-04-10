@@ -16,6 +16,7 @@ extern "C"{
   bool env_add(struct dict_list **env, const char *key, const char *value);
   bool env_del(struct dict_list **env, const char *key);
   char * env_get(struct dict_list *env, const char *key);
+  char * env_nget(struct dict_list *env, const char *key, uint8_t n);
 #ifdef DEBUG
   void env_test();
 #endif

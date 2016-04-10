@@ -64,16 +64,21 @@ bool env_del(struct dict_list **env, const char *key)
 }
 
 // get a value from a environment variable
-char * env_get(struct dict_list *env, const char *key)
+char * env_nget(struct dict_list *env, const char *key, uint8_t n)
 {
 	while (env != NULL)
 	{
 		// Found a matching key
-		if (strcmp(env->key,key) == 0)
+		if (strncmp(env->key,key,n) == 0)
 			return env->value;
 		env = (struct dict_list *) env->next;
 	}
 	return NULL;
+}
+
+char * env_get(struct dict_list *env, const char *key)
+{
+	return env_nget(env, key, 0);
 }
 
 #ifdef DEBUG

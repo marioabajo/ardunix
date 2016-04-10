@@ -53,6 +53,12 @@ struct stat
   uint8_t  st_size;        /* total size, in bytes */
 };
 
+struct file_descriptor
+{
+  // TODO: pointer to fs operations
+  long address;
+  long offset;
+};
 
 #ifdef __cplusplus
 extern "C"{

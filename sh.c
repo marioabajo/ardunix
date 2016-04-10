@@ -6,24 +6,57 @@
 #include <string.h>
 
 // parse command
-uint8_t parsecmd(uint8_t argc, char *argv[])
+uint8_t parsecmd(uint8_t argc, char *argv[], struct dict_list **env)
 {
-  // TODO: check if the line is a reserved word, variable assigment, etc...
-  // TODO: pass environment
+  uint8_t carg = 0;  // Current argument being studied
+  uint8_t *pos = 0;
+
+  // Variable assingment
+  while (argc >= 0 && ((pos = strchr(argv[carg], '=')) != NULL))
+  {
+    *pos = 0;
+    env_add(env, argv[carg], ++pos);
+    argc--;
+    argv++;
+  }
+
+  // Run out of parameters? nothing more to do, bye bye
+  if (argc == 0)
+    return 0;
 
   // Check for reserved words
-  if (strncmp_P(argv[0],PSTR("exit"),5) == 0)
-    // exit
+  // exit
+  if (strncmp_P(argv[carg],PSTR("exit"),5) == 0)
+  {
+    // Do we have more parameters?
+    switch (argc-carg)
+    {
+      // TODO: if the exit code is ommited, use the result of the last command
+      case 1:
+        return 1;
+        break;
+      // TODO: strtol
+      case 2:
+        return 1;
+        break;
+      default:
+        fprintf_P(stderr,PSTR("exit: too many arguments\n"));
+        return 0;
+    }
+  }
+
+  // logout
+  else if (strncmp_P(argv[carg],PSTR("logout"),7) == 0)
     return 1;
   else
     // execute the command
-    execve(argc, argv, NULL);
+    execve(argc-carg, argv, env);
 }
 
 // get command from input
-bool getcmd(uint8_t buff[])
+bool getcmd(char buff[])
 {
-  uint8_t buffp=0;
+  char buffp=0;
 
   do
   {
@@ -65,7 +98,7 @@ bool getcmd(uint8_t buff[])
 }
 
 // Break command line into arguments separated by spaces
-uint8_t splitcmd(uint8_t cmd[], char *args[])
+uint8_t splitcmd(char cmd[], char *args[])
 {
   uint8_t cont=0, pos=0, ipos=0, par=0;
 
@@ -118,7 +151,86 @@ uint8_t splitcmd(uint8_t cmd[], char *args[])
   return cont;
 }
 
-uint8_t sh(uint8_t argc, char *argv[])
+uint8_t varexpansion(char line[], struct dict_list **env)
+{
+  struct dict_list e;
+  uint8_t pos = 0, len, varlen, j;
+  int8_t extralen;
+  char *var, *i;
+
+  len = strlen(line);
+
+  while (pos < len)
+  {
+    switch (line[pos])
+    {
+      // Invalidate function of next character
+      case '\\':
+        pos++;
+        break;
+      // Parameter expansion
+      case '$':
+        //TODO: check for length
+        pos++;
+        // It's a variable name?
+        if ((line[pos] >= 'a' && line[pos] <= 'z') ||
+            (line[pos] >= 'A' && line[pos] <= 'Z'))
+        {
+          // calculate the end of the parameter name
+          i = line + pos;
+          while ((*i >= 'a' && *i <= 'z') ||
+                 (*i >= 'A' && *i <= 'Z') ||
+                 (*i >= '0' && *i <= '9') ||
+                 (*i == '_'))
+            i++;
+          // now i points to the end of the parameter, this minus pos equals
+          // to the lenght of the parameter name
+          extralen = i - (line + pos);
+          varlen = 0;
+          // get the environment variable value
+          if ((var = env_nget(*env, line + pos, extralen)) != NULL)
+          {
+            // get the lenght of the parameter value
+            varlen = strlen(var);
+            // calculate the difference betwen the length of the variable 
+            // name and the length of the data stored in it
+            extralen -= varlen - 1;
+          }
+          extralen = -extralen;
+          // Now, maybe the value of the parameter is bigger that the parameter
+          // name, so, to put it in the same line we have to shift the line
+          // the number of characters in extralen
+          // First, check the limits
+          if (len + extralen > ARGMAX)
+          {
+            fprintf_P(stderr,PSTR("ERROR: Line too long, %d limit reached\n"), ARGMAX);
+            return 0;
+          }
+          // adjust the length of the line (now is bigger)
+          len += extralen;
+          // shift the string the value of extralen (negative for right shift)
+          j = len;
+          while (j >= pos)
+          {
+            //printf("DEBUG: ini env = %x\n", *env);
+            line[j] = line[j - extralen];
+            //printf("DEBUG: fin env = %x\n", *env);
+            j--;
+          }
+          // put value of the environment variable
+          strncpy(line + pos -1, var, varlen);
+          pos += varlen - 2;
+        }
+
+        break;
+    }
+
+    pos++;
+  }
+  return 1;
+}
+
+uint8_t sh(uint8_t argc, char *argv[], struct dict_list **env)
 {
   // input line buffer
   uint8_t line[ARGMAX];
@@ -126,21 +238,6 @@ uint8_t sh(uint8_t argc, char *argv[])
   char *args[NCARGS];
   uint8_t argsnum=0;
   uint8_t exit_flag=1;
-  struct dict_list *env=NULL;
-
-  // debug: environment functions
-  /*printf("env: C?  %s\n",env_get(env,"C"));
-  printf("env: del B  (%d)\n", env_del(&env,"B"));
-  printf("env: A = 1  (%d)\n", env_add(&env,"A","1"));
-  printf("env: A?  %s\n",env_get(env,"A"));
-  printf("env: HOME = aSd  (%d)\n", env_add(&env,"HOME","aSd"));
-  printf("env: B = 23  (%d)\n", env_add(&env,"B","23"));
-  printf("env: A = 4  (%d)\n", env_add(&env,"A","4"));
-  printf("env: A?  %s\n",env_get(env,"A"));
-  printf("env: del A  (%d)\n", env_del(&env,"A"));
-  printf("env: A?  %s\n",env_get(env,"A"));
-  printf("env: B?  %s\n",env_get(env,"B"));
-  printf("env: HOME?  %s\n",env_get(env,"HOME"));*/
 
   do
   {
@@ -151,14 +248,16 @@ uint8_t sh(uint8_t argc, char *argv[])
     if (!getcmd(line))
       continue;
 
-    // TODO: environment variable substituion step
+    // Parameter expansion and environment variables
+    if (!varexpansion(line, env))
+      continue;
 
     // Split command line into parameters
     if ((argsnum = splitcmd(line,args)) == 0)
       continue;
 
     // parse line
-    switch (parsecmd(argsnum, args))
+    switch (parsecmd(argsnum, args, env))
     {
       case 1:  // exit shell
         exit_flag=0;
@@ -170,7 +269,7 @@ uint8_t sh(uint8_t argc, char *argv[])
     for (int i=0;i<argsnum;i++)
       printf("Arg %d: %s\n", i, args[i]);*/
     
-  // TODO: Implement an exit mechanism
+  // TODO: Implement a decent exit mechanism
   } while(exit_flag);
 
   return 0;

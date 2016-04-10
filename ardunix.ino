@@ -12,7 +12,8 @@ PROGFS_ROOT(bin);
   PROGFS_DIR_SUB(bin, 0x45, sh, dev);
     PROGFS_FILE(sh,   5, (void *)sh, ls);
     PROGFS_FILE(ls,   5, (void *)ls, free);
-    PROGFS_FILE(free, 5, (void *)freeMem, times);
+    PROGFS_FILE(free, 5, (void *)freeMem, set);
+    PROGFS_FILE(set, 5, (void *)set, times);
     PROGFS_FILE_LAST(times, 5, (void *)times);
   PROGFS_DIR(dev, 0x45, etc);
   PROGFS_DIR_LAST(etc, 0x45);
@@ -55,6 +56,8 @@ void loop()
 int main(void)
 #endif
 {
+  struct dict_list *env=NULL;
+
   printf_P(PSTR("Ardunix 0.2 (17/02/2016)\n"));
 
   #ifdef DEBUG
@@ -63,7 +66,7 @@ int main(void)
 
   //const char *cmd[] = {"/bin/sh", NULL};
 
-  sh(0,NULL);
+  sh(0,NULL,&env);
   //execve(0, (char **)cmd, NULL);
   printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));
   delay(10000);
