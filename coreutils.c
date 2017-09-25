@@ -5,56 +5,66 @@
 #include <Arduino.h>
 #endif
 
-// list files and directories
-uint8_t ls(uint8_t argc, char *argv[], struct dict_list **env)
+void ls_print_entry(struct dirent *entry, const char *entry_name)
 {
-  DIR *dir;
+  char c = 0;
+  char *name = entry->d_name;
+
+  switch(entry->flags & FS_MASK_FILETYPE)
+  {
+    case FS_FILE:  // File
+      c = '-';
+      break;
+    case FS_DIR: // Directory
+      c = 'd';
+      break;
+    case FS_LINK: // Link
+      c = 'l';
+      break;
+    case FS_DEV: // Device
+      c = 'c'; // TODO: Another case for each type of dev
+  }
+  putchar(c);
+  c = (entry->flags & FS_READ) ? 'r' : '-';
+  putchar(c);
+  c = (entry->flags & FS_WRITE) ? 'w' : '-';
+  putchar(c);
+  c = (entry->flags & FS_EXEC) ? 'x' : '-';
+  putchar(c);
+  if (entry_name != NULL)
+    name = (char *) entry_name;
+  printf_P(PSTR(" %4d %s\n"), entry->size, name);
+}
+
+// list files and directories
+uint8_t main_ls(uint8_t argc, char *argv[])
+{
+  DIR dir;
   struct dirent *entry;
-  char c;
+  uint8_t aux;
 
   //TODO: add more options
+  //printf_P(PSTR("args: %d\n"), argc);
   if (argc > 0)
-    dir = opendir(argv[1]);
+    aux = opendir(argv[1], &dir);
   else
-    dir = opendir("/");
+    aux = opendir("/", &dir);
 
-  if (dir == NULL)
-    return -1;
+  if (aux != 0)
+    return 255;
+  
+  ls_print_entry(&(dir.dd_ent),".");
 
-  entry = readdir(dir);
-  while (entry != NULL)
-  {
-    switch(entry->flags & 0xc0)
-    {
-      case 0x0:  // File
-        c = '-';
-        break;
-      case 0x40: // Directory
-        c = 'd';
-        break;
-      case 0x80: // Link
-        c = 'l';
-        break;
-      case 0xc0: // Device
-        c = 'c'; // TODO: Another case for each type of dev
-    }
-    putchar(c);
-    c = (entry->flags & 0x4) ? 'r' : '-';
-    putchar(c);
-    c = (entry->flags & 0x2) ? 'w' : '-';
-    putchar(c);
-    c = (entry->flags & 0x1) ? 'x' : '-';
-    putchar(c);
-    printf(" %4d %s\n", entry->size, entry->d_name);
-    entry = readdir(dir);
-  }
-  closedir(dir);
+  while ((entry = readdir(&dir)) != NULL)
+      ls_print_entry(entry, NULL);
+
+  //closedir(&dir);
 
   return 0;
 }
 
 // Print free ram
-uint8_t freeMem (uint8_t argc, char *argv[], struct dict_list **env)
+uint8_t main_free (uint8_t argc, char *argv[])
 {
 #ifdef __AVR__
   extern unsigned int __heap_start;
@@ -86,32 +96,52 @@ uint8_t freeMem (uint8_t argc, char *argv[], struct dict_list **env)
 #else
   printf("Free not implemented in this arch.\n");
 #endif
+  return 0;
 }
 
-uint8_t times (uint8_t argc, char *argv[], struct dict_list **env)
+uint8_t main_times (uint8_t argc, char *argv[])
 {
-  unsigned long t1 = millis();
+  char *argv2[NCARGS];
+  unsigned long t1;
+  uint8_t i;
 
+  for (i=1; i<argc; i++)
+      argv2[i-1] = argv[i];
+  argv2[i] = NULL;
+  
+  t1=millis();
   if (argc > 0)
   {
     //TODO: pass env to execve
     //FIXME: look like it's not passing correctly the parameters to the command
-    execve(argc-1, &(argv[1]), NULL);
+    execve(argv[1], (const char **)argv2, NULL);
   }
   printf_P(PSTR("millis: %ld\n"), millis() - t1);
   return 0;
 }
 
 // list environment variables
-uint8_t set(uint8_t argc, char *argv[], struct dict_list **env)
+uint8_t main_set(uint8_t argc, char *argv[], char *env[])
 {
-  struct dict_list *c=*env;
+  /*struct dict_list *c=*env;
 
   while (c != NULL)
   {
     printf("%s=%s\n", c->key, c->value);
     c = (struct dict_list *) c->next;
-  }
+  }*/
 
   return 0;
 }
+
+uint8_t main_true(uint8_t argc, char *argv[], char *env[])
+{
+  return 0;
+}
+
+uint8_t main_false(uint8_t argc, char *argv[], char *env[])
+{
+  return 1;
+}
+
+

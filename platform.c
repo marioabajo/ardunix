@@ -15,4 +15,9 @@ unsigned int pgm_read_word(const uint16_t *d)
   return *d;
 }
 
+uint8_t pgm_read_byte(const uint8_t *d)
+{
+  return *d;
+}
+
 #endif

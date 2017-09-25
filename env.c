@@ -1,6 +1,7 @@
 #include "env.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 // add/update new environment variable
 bool env_add(struct dict_list **env, const char *key, const char *value)

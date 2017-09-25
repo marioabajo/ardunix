@@ -27,11 +27,11 @@
   #endif
   void delay(long ms);
   unsigned int pgm_read_word(const uint16_t *d);
+  uint8_t pgm_read_byte(const uint8_t *d);
   #ifdef __cplusplus
   }
   #endif
   #define millis() (long) time(NULL)
-  #define pgm_read_byte(x) *(x)
   #define pgm_read_ptr(x) *(x)
   #define PROGMEM
   #define PSTR(s) (s)

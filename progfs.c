@@ -1,151 +1,189 @@
-#include "progfs.h"
+//#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "progfs.h"
+/* Warning: be careful when including stdio.h because it has the first definition
+ of FILENAME_MAX and can(will) do stack corruption 
+ */
 
-int progfs_stat(const char *pathname, struct stat *buf)
+uint8_t progfs_stat(const char *pathname, struct stat *buf)
 {
-  PFS *dir = ProgFs;
-  uint8_t i=1,j=1,k;
-
-  // Only absolute paths allowed for now
-  // Empty paths not allowed
-  // TODO: normalize pathnames
-  if (pathname[0] == 0 || pathname[0] != '/')
-    return -1;
-
-  // Now, examine the pathname and start digging into the directory structure
-  // while reading the pathname elementes: /element1/element2/....
-  // vars i and j will be pointing to the begining and the end of each element
-  // inside the string
-  for (;;)
-  {
-    // Found a match, check if there is more components left in the pathname
-    // to look for
-    if (pathname[j]==0)
-    {
-      buf->st_ino = (long)dir;
-      buf->st_mode = (uint8_t)pgm_read_byte(&(dir->flags));
-      buf->st_size = (uint16_t)pgm_read_word(&(dir->size));
-      return 0;
-    }
-
-    // There are more elements left in the path, so necesary this (actual)
-    // element must be a directory (and have access), we must check it.
-    if ((uint8_t)pgm_read_byte(&(dir->flags)) & 0x41 == 0)
-      return -1;
-
-    // Get into the child object
-    dir = (PFS *)pgm_read_ptr(&(dir->child));
-
-    // Advance in the path string to the next component, delimited by i and j
+    uint8_t i=0, ptr=0;
+    char actualname[PATH_MAX]="";
+    
+    if (pathname == 0)
+        return 1; //invalid filename
+    
     do
-      j++;
-    while (pathname[j]!='/' && pathname[j]!=0);
-
-    // loop within the elements of the filesystem in the same level and compare
-    // the name with the name of the current element being watched in pathname
-    k = 0;
-    for (;;)
     {
-      // element not found
-      if (dir == NULL)
-        return -1;
+        // read the name of the next entry, if it's not null copy to actualname
+        if (ProgFs2[i].name)
+        {
+            strncpy(actualname + ptr, ProgFs2[i].name, PATH_MAX - ptr);
+            
+            //DEBUGING: printf("DEBUG progfs_stat: ptr:%d i:%d actualname:%s\n",ptr,i,actualname);
+            // compare it with the filename supplied, if coincide, we have a match
+            // TODO: a faster strncmp could be possible
+            if (strncmp(pathname, actualname, PATH_MAX) == 0)
+            {
+                buf->st_ino = i;
+                buf->st_mode = ProgFs2[i].perm;
+                buf->st_size = ProgFs2[i].size;
+                return 0;
+            }
 
-      // Check if characters differs, if so, reset and procced with the next
-      // element of the directory
-      if (pgm_read_ptr(&(dir->filename[k])) != (pathname[i + k]))
-      {
-        k = 0;
-        dir = (PFS *)pgm_read_ptr(&(dir->next));
-        continue;
-      }
-
-      // string reach an end. I think we have a match!
-      if (k == j-i-1 && (pgm_read_ptr(&(dir->filename[k+1])) == '/' || pgm_read_ptr(&(dir->filename[k+1])) == 0))
-        break;
-
-      k++;
+            // prepare for the next iteration
+            // if the actual entry is a directory, add '/' at the end
+            // TODO: check permissions
+            if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
+            {
+                // ptr points to the last position of the directory in the pathname
+                ptr += strlen(ProgFs2[i].name);
+                if (ptr>1)
+                {
+                    if (ptr + 2 >= PATH_MAX)
+                        return 1; // path too large
+                    actualname[ptr++]='/';
+                    actualname[ptr]=0;
+                }
+            }
+        }
+        // if the entry it's null indicates the end of a directory
+        else
+        {
+            // go back and delete the last element in the path
+            ptr--;
+            while (ptr > 0 && actualname[ptr-1]!='/')
+                ptr--;
+            actualname[ptr]=0;
+        }
+    
+        i++;
     }
+    while (ptr>0);
 
-    i = j + 1;
-  }
+    return 255; // Not found
 }
 
-DIR *progfs_opendir(const char *path)
+uint8_t progfs_opendir(const char *path, DIR *d)
 {
   struct stat file;
-  DIR *d;
-  PFS *pfsd;
+  struct dirent *e;
 
   // Stat the directory and check that it is a directory
-  if (stat(path, &file) != 0  || file.st_mode & 0x40 == 0)
-    return NULL;
+  if (progfs_stat(path, &file) != 0 || (file.st_mode & FS_MASK_FILETYPE) != FS_DIR)
+    return 1; // directory doesn't exist
 
-  if ((d = (DIR *)malloc(sizeof(DIR))) == NULL)
-	return NULL;
+  if ((file.st_mode & FS_MASK_PERMISSION) != (FS_EXEC | FS_READ))
+    return 2; // permission denied
 
   // Position to the first child
-  pfsd = (PFS *)file.st_ino;
-  d->dd_size = pfsd->size;
-  d->dd_buf = (PFS *)pgm_read_ptr(&(pfsd->child));
+  d->dd_size = ProgFs2[file.st_ino].size;
+  d->dd_buf = file.st_ino;
   d->dd_loc = 0;
-  d->dd_ent = (struct dirent *)malloc(sizeof(struct dirent));
-  if (d->dd_ent == NULL)
-    return NULL;
+  
+  /* TODO: the following 5 lines repate +/- the same in other parts... consider a funciton*/
+  e = &d->dd_ent;
+  strncpy(e->d_name, ProgFs2[file.st_ino].name, FILENAME_MAX);
+  e->flags = file.st_mode;
+  e->d_ino = file.st_ino;
+  e->size = ProgFs2[file.st_ino].size;
 
-  return d;
-}
-
-uint8_t progfs_closedir(DIR *dirp)
-{
-  free(dirp->dd_ent);
-  free(dirp);
   return 0;
 }
 
 struct dirent *progfs_readdir(DIR *dirp)
 {
-  static struct dirent *result;
-  PFS *entry;
-  long offset;
+  uint8_t level = 0, i;
+  struct dirent *e;
 
-  if (dirp == NULL)
-    return NULL;
+  // if it's the root directory, we wan't to list whats inside it, so we need this litle trick
+  if (dirp->dd_loc == 0)
+      dirp->dd_loc++;
+ 
+  i = dirp->dd_buf + dirp->dd_loc;
+  
+  // If the actual entry is a directory terminator, we reached the end of the listing
+   if (ProgFs2[i].name == 0)
+      return NULL;
 
-  // Are we already in the last entry? if so, exit
-  if (dirp->dd_loc == -(long)(dirp->dd_buf))
-    return NULL;
+  // Read entry
+  e = &dirp->dd_ent;
+  strncpy(e->d_name, ProgFs2[i].name, FILENAME_MAX);
+  e->flags = ProgFs2[i].perm;
+  e->d_ino = i;
+  e->size = ProgFs2[i].size;
 
-  result = dirp->dd_ent;
-
-  // Load the pointer to the disk/flash structure
-  entry = (PFS *)(dirp->dd_buf + dirp->dd_loc);
-
-  // Copy the filename, flags and size
-  strncpy_P(result->d_name, (const char *)pgm_read_ptr(&(entry->filename)), FILENAME_MAX);
-  result->flags = (uint8_t)pgm_read_byte(&(entry->flags));
-  result->size = (uint16_t)pgm_read_word((uint16_t *)&(entry->size));
-
-  // Load the pointer to the data if it's a file
-  if (result->flags & 0x40)
-    result->d_ino = 0;
+  // Point to next entry, but check first if its a directory and bypass the contents
+  if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
+  {
+      do
+      {
+          if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
+              level++;
+          else if (ProgFs2[i].name == 0)
+              level--;
+          dirp->dd_loc++;
+          i++;
+      } while (level > 0);
+  }
   else
-    result->d_ino = (long)pgm_read_ptr(&(entry->data));
+    dirp->dd_loc++;
 
-  // Put in the dd_loc the increment of the pointer to the next entry
-  offset = (long)pgm_read_ptr(&(entry->next));
+  return e;
+}
 
-  // Last entry? set special code, offset = -buffer
-  if (offset == 0)
-    dirp->dd_loc = -(long)(dirp->dd_buf);
-  else
-    dirp->dd_loc = offset - (long)dirp->dd_buf;
-
-  return result;
+uint8_t progfs_closedir(DIR *dirp)
+{
+  return 0;
 }
 
 void progfs_rewinddir(DIR *dirp)
 {
   dirp->dd_loc = 0;
 }
+
+uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
+{
+  struct stat file;
+
+  // Stat the file
+  if (progfs_stat(path, &file) != 0)
+    return 1; // file doesn't exist
+
+  if ((file.st_mode & FS_MASK_FILETYPE) == FS_DIR)
+    return 2; // it's a directory
+
+  // TODO: check flags
+
+  // TODO: fd->dev = ;  
+  fd->inum = file.st_ino;
+  fd->address = 0;
+  fd->size = file.st_size;
+  fd->flags = flags;
+
+  return 0;  
+}
+
+uint8_t progfs_read(FD *fd, void *buf, uint8_t size)
+{
+  char *ptr;
+  long cont=0;
+  
+  for (; fd->address < fd->size && cont < size; fd->address++)
+  {
+    ptr = buf + cont;
+    *ptr = pgm_read_byte(ProgFs2[fd->inum].ptr + fd->address);
+    cont++;
+  }
+
+  return cont;
+}
+
+uint8_t progfs_write(FD *fd, void *buf, uint8_t size)
+{
+  // TODO
+  return 0;
+}
+
 

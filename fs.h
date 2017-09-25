@@ -30,13 +30,26 @@
                    - Device           11
 
 */
-typedef struct fsentry
-{
-  uint8_t dd_size; /* amount of data returned by getdirentries */
-  char   *dd_buf;  /* Pointer to data buffer */
-  long    dd_loc;  /* offset inside data buffer */
-  struct dirent *dd_ent; /* pointer to dirent structure */
-} DIR;
+
+#define FS_TYPE_PROGFS 0   // Progfs filesystem id 0
+#define FS_MASK_FILETYPE 192
+#define FS_MASK_PERMISSION 7
+#define FS_READ   1
+#define FS_WRITE  2
+#define FS_EXEC   4
+#define FS_FILE   0
+#define FS_DIR    64
+#define FS_LINK   128
+#define FS_DEV    192
+
+// Open call flags
+#define O_RDONLY 0x00
+#define O_WRONLY 0x01
+#define O_RDWR   0x02
+#define O_APPEND 0x08
+#define O_CREATE 0x10
+#define O_TRUNC  0x20
+#define O_EXCL   0x40
 
 struct dirent
 {
@@ -46,6 +59,14 @@ struct dirent
   uint16_t size;   /* size of the file */
 };
 
+typedef struct fsentry
+{
+  uint8_t dd_size; /* amount of data returned by getdirentries */
+  uint8_t dd_buf;  /* Pointer to data buffer */
+  long    dd_loc;  /* offset inside data buffer */
+  struct dirent dd_ent; /* pointer to dirent structure */
+} DIR;
+
 struct stat 
 {
   long     st_ino;         /* inode number */
@@ -53,24 +74,36 @@ struct stat
   uint8_t  st_size;        /* total size, in bytes */
 };
 
-struct file_descriptor
+struct statvfs
+{
+  uint8_t  vfs_fstype;      /* file system type id */
+  long     vfs_bksize;      /* block size in bytes */
+  long     vfs_size;        /* total size in blocks */
+  long     vfs_free;        /* free size in blocks */
+};
+
+typedef struct file_descriptor
 {
   // TODO: pointer to fs operations
-  long address;
-  long offset;
-};
+  uint8_t dev;              /* device number */
+  long    inum;             /* inode number */
+  long    address;          /* address inside file */
+  long    size;             /* file size */
+  uint8_t flags;            /* file flags */
+} FD;
 
 #ifdef __cplusplus
 extern "C"{
 #endif
-  int stat(const char *pathname, struct stat *buf);
-  // Open a directory for reading. 
-  DIR *opendir(const char* path);
+  uint8_t statvfs(const char* path, struct statvfs *buf);
+  uint8_t stat(const char *pathname, struct stat *buf);
+  uint8_t opendir(const char *path, DIR *d);
   uint8_t closedir(DIR *dirp);
   struct dirent *readdir(DIR *dirp);
-  //DIR *fsentry_sublevel_find(const char *filename);
-  //struct fsentry *fsentry_onelevel_find(struct fsentry *parent, const char *name, uint8_t namesize);
-  //bool fsentry_add(const char *name, struct fsentry *parent, uint8_t flags, void *function_name);
+  void rewinddir(DIR *dirp);
+  uint8_t open(const char *path, uint8_t flags, FD *fd);
+  uint8_t read(FD *fd, void *buf, uint8_t size);
+  uint8_t write(FD *fd, void *buf, uint8_t size);
 #ifdef __cplusplus
 }
 #endif

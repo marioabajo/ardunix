@@ -4,65 +4,26 @@
 #include "platform.h"
 #include "fs.h"
 
-typedef struct progfsentry
-{
-  const char *filename;
-  const uint8_t flags;
-  union
-  {
-    const struct progfsentry *child;
-    const void *data;
-  };
-  const uint16_t size;
-  const struct progfsentry *next;
-} PFS;
+typedef struct progfsentry {
+    const char *name;
+    void *ptr;
+    uint8_t perm;
+    uint16_t size;
+} PFS2;
 
-#define PROGFS_FILE(fname, flags, func, next) \
-  extern const PFS PROGFS_##next; \
-  const char text_##fname[] PROGMEM = #fname;\
-  const PFS PROGFS_##fname PROGMEM = {&text_##fname[0], flags, {.data = func}, 0, &PROGFS_##next}
-
-#define PROGFS_FILE_LAST(fname, flags, func) \
-  const char text_##fname[] PROGMEM = #fname; \
-  const PFS PROGFS_##fname PROGMEM = {&text_##fname[0], flags, {.data = func}, 0, NULL}
-
-#define PROGFS_DIR_SUB(fname, flags, child, next) \
-  extern const PFS PROGFS_##next; \
-  extern const PFS PROGFS_##child; \
-  const char text_##fname[] PROGMEM = #fname;\
-  const PFS PROGFS_##fname PROGMEM = {&text_##fname[0], flags, {&PROGFS_##child}, 0, &PROGFS_##next}
-
-#define PROGFS_DIR(fname, flags, next) \
-  extern const PFS PROGFS_##next; \
-  const char text_##fname[] PROGMEM = #fname;\
-  const PFS PROGFS_##fname PROGMEM = {&text_##fname[0], flags, {NULL}, 0, &PROGFS_##next}
-
-#define PROGFS_DIR_SUB_LAST(fname, flags, child) \
-  extern const PFS PROGFS_##child; \
-  const char text_##fname[] PROGMEM = #fname; \
-  const PFS PROGFS_##fname PROGMEM = {&text_##fname[0], flags, {&PROGFS_##child}, 0, NULL}
-  
-#define PROGFS_DIR_LAST(fname, flags) \
-  const char PROGMEM text_##fname[] PROGMEM = #fname; \
-  const PFS PROGFS_##fname PROGMEM = {&text_##fname[0], flags, {NULL}, 0, NULL}
-
-#define PROGFS_ROOT(child) \
-  extern const PFS PROGMEM PROGFS_##child; \
-  const char text_root[] PROGMEM = "/"; \
-  const PFS PROGFS_ROOT PROGMEM = {&text_root[0], 0x45, {&PROGFS_##child}, 0, NULL}; \
-  PFS *ProgFs = (PFS *)&PROGFS_ROOT
-
-
-extern PFS *ProgFs;
+extern const PFS2 ProgFs2[];
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  int progfs_stat(const char *pathname, struct stat *buf);
-  DIR *progfs_opendir(const char *path);
+  uint8_t progfs_stat(const char *pathname, struct stat *buf);
+  uint8_t progfs_opendir(const char *path, DIR *d);
   uint8_t progfs_closedir(DIR *dirp);
   struct dirent *progfs_readdir(DIR *dirp);
   void progfs_rewinddir(DIR *dirp);
+  uint8_t progfs_open(const char *path, uint8_t flags, FD *fd);
+  uint8_t progfs_read(FD *fd, void *buf, uint8_t size);
+  uint8_t progfs_write(FD *fd, void *buf, uint8_t size);
 #ifdef __cplusplus
 }
 #endif

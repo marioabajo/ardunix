@@ -1,17 +1,29 @@
 #include "fs.h"
 #include "progfs.h"
 
-int stat(const char *pathname, struct stat *buf)
+uint8_t statvfs(const char* path, struct statvfs *buf)
+{
+    // TODO: actually we only support the internal FS
+    
+    buf->vfs_fstype = FS_TYPE_PROGFS;
+    buf->vfs_bksize = 1;
+    buf->vfs_size = 0;
+    buf->vfs_free = 0;
+
+    return 0;
+}
+
+uint8_t stat(const char *pathname, struct stat *buf)
 {
   // TODO: virtual filesystem structure in process
   return progfs_stat(pathname, buf);
 }
 
 // Open a directory for reading. 
-DIR *opendir(const char *path)
+uint8_t opendir(const char *path, DIR *d)
 {
   // TODO: virtual filesystem structure in process
-  return progfs_opendir(path);
+  return progfs_opendir(path, d);
 }
 
 // Close a directory previously opened
@@ -27,48 +39,27 @@ struct dirent *readdir(DIR *dirp)
   return progfs_readdir(dirp);
 }
 
-
-/*bool fsentry_add(const char *name, DIR *parent, uint8_t flags, void *function_name)
+void rewinddir(DIR *dirp)
 {
-	struct fsentry *temp;
+  // TODO: virtual filesystem structure in process
+  return progfs_rewinddir(dirp);
+}
 
-	// parent directory must by a directory
-	if (! parent->flags & 0x80)
-		return false;
+uint8_t open(const char *path, uint8_t flags, FD *fd)
+{
+  // TODO: virtual filesystem structure in process
+  return progfs_open(path, flags, fd);
+}
 
-	// reserve memory for the new entry
-	if ((temp = malloc(sizeof(struct fsentry))) == NULL ||
-	    (temp->filename = malloc(strlen(name))) == NULL)
-	{
-		free(temp);
-		return false;
-	}
+uint8_t read(FD *fd, void *buf, uint8_t size)
+{
+  // TODO: virtual filesystem structure in process
+  return progfs_read(fd, buf, size);
+}
 
-	// Look if th directory is empty
-	if (parent->child==NULL)
-	{
-		parent->child = temp;
-		parent=parent->child;
-	}
-	else
-	{
-		// go to the last child element of the directory
-		parent = parent->child;
-		while (parent->next != NULL)
-			parent = parent->next;
-		parent->next = temp;
-		parent = parent->next;
-	}
-
-	// fill the data
-	strcpy(parent->filename, name);
-	parent->flags = flags;
-	parent->next = NULL;
-	if (parent->flags & 0x80)
-		parent->child = NULL;
-	else
-		parent->data=function_name;
-
-	return true;
-}*/
+uint8_t write(FD *fd, void *buf, uint8_t size)
+{
+  // TODO: virtual filesystem structure in process
+  return progfs_write(fd, buf, size);
+}
 

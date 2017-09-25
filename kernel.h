@@ -3,13 +3,13 @@
 
 #include "platform.h"
 #include "fs.h"
-#include "progfs.h"
 #include "env.h"
 
 #ifdef __cplusplus
 extern "C"{
 #endif
-  uint8_t execve(uint8_t argc, char *argv[], struct dict_list **envp);
+  uint8_t exec(const char *filename, const char *argv[]);
+  uint8_t execve(const char *filename, const char *argv[], char *envp[]);
 #ifdef __cplusplus
 }
 #endif
