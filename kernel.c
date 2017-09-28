@@ -18,7 +18,7 @@ uint8_t execve(const char *filename, const char *argv[], char *envp[])
   FD fd;
   char *argv2[NCARGS];
   char header[3];
-  uint8_t argc ,i=0;
+  uint8_t argc;
 
   if (filename == NULL)
     return 1; // filename invalid

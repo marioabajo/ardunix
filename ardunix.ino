@@ -16,7 +16,7 @@ static FILE uart = {0} ;
 
 // file system definition
 const char PROGMEM motd[] = "ardunix test v0.4\n";
-const char PROGMEM script[] = "#!/bin/sh\nls\n";
+const char PROGMEM script[] = "#!/bin/sh\n\nif /bin/false\nthen\n  /bin/ls /bin\nelse\n  /bin/ls /etc\nfi\n";
 
 const PFS2 ProgFs2[] = \
 {{"/\0", NULL, FS_DIR | FS_EXEC | FS_READ, 0},\
@@ -25,9 +25,10 @@ const PFS2 ProgFs2[] = \
     {"sh", (void *)main_sh, FS_EXEC | FS_READ, 0},\
     {"free", (void *)main_free, FS_EXEC | FS_READ, 0},\
     {"times", (void *)main_times, FS_EXEC | FS_READ, 0},\
-    {"set", (void *)main_set, FS_EXEC | FS_READ, 0},\
+    /*{"set", (void *)main_set, FS_EXEC | FS_READ, 0},\*/
     {"true", (void *)main_true, FS_EXEC | FS_READ, 0},\
     {"false", (void *)main_false, FS_EXEC | FS_READ, 0},\
+    {"cat", (void *)main_cat, FS_EXEC | FS_READ, 0},\
   {0, 0, 0, 0},\
   {"etc", NULL, FS_DIR | FS_EXEC | FS_READ, 0},\
     {"motd", (void *)motd, FS_READ, sizeof(motd)},\
@@ -79,7 +80,7 @@ int main(void)
 {
   //struct dict_list *env=NULL;
 
-  printf_P(PSTR("Ardunix 0.3 beta (15/04/2017)\n"));
+  printf_P(PSTR("Ardunix 0.4 beta (25/09/2017)\n"));
 
   /*#ifdef DEBUG
   env_test();
@@ -94,7 +95,7 @@ int main(void)
   printf("execve: %d\n", exec("/etc/script", NULL));  
 #endif
   
-  printf("execve: %d\n", exec("/bin/sh", NULL));
+  printf_P(PSTR("execve: %d\n"), exec("/bin/sh", NULL));
   //main_sh(0, NULL, NULL);
   
   printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));

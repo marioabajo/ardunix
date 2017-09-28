@@ -55,6 +55,7 @@ char is_var(char *t, size_t n)
 
 token str_to_token(char *t, size_t n)
 {
+  
 	// First, clasify token by the length of it, it's fast
 	switch (n)
 	{
@@ -129,7 +130,7 @@ char * get_string(char *old_cmd, size_t *len, size_t *limit)
 	cmd = old_cmd + *len;
 	*len = 0;
 
-	// remove begining spaces and new lines
+	// remove begining spaces
 	while (*limit > 0 && cmd[0] == ' ')
 	{
 		cmd++;
@@ -196,12 +197,6 @@ void extend_string(char *cmd, size_t *len, size_t *limit)
 	*len = limit2 - *limit;
 }
 
-char * trim_NL(char *cmd, size_t *len, size_t *limit)
-{
-	// TODO: remove new lines, carrier returns and ";" simbols
-	return get_string(cmd, len, limit);
-}
-
 unsigned char find_else_fi(char *cmd, size_t *len, size_t *limit)
 {
 	unsigned char count = 0;
@@ -228,18 +223,8 @@ unsigned char find_else_fi(char *cmd, size_t *len, size_t *limit)
 		if (!found)
 			cmd = get_string(cmd, len, limit);
 	}
-	//if (!found)
-	//	printf("Syntax error, nor else neither fi found\n");
 
 	return found;
-}
-
-bool trim_spaces(char *str, size_t len, size_t *pos)
-{
-    while (*pos < len && str[*pos] == ' ')
-      *pos = *pos + 1;
-
-    return (*pos == len);
 }
 
 uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *argc)
@@ -288,14 +273,21 @@ unsigned char eval(char *cmd, size_t limit)
 		//printf("+ %.*s  (token: %d)\n",(int)len, cmd, tok);
 		switch (tok)
 		{
-			case TK_NL:
+      // ignore new lines, carrier returns and semicolons
       case TK_CR:
-				break;
+      case TK_NL:
+      case TK_SC:
+        break;
+
 
 			// a simple command followed by parameters until '\n' or ';'
 			case FALSE:
 				extend_string(cmd, &len, &limit);
+        // Discard empty commands
+        if (cmd[0] == 0)
+          break;
         str_to_argv(cmd, str, len, argv, &argc);
+        //printf("DEBUG: \"%s\" (%x), %d, %d\n", argv[0], argv[0][0], len, limit);
         error = execve(argv[0], (const char **) &argv[1], NULL);
 				break;
 
@@ -310,7 +302,7 @@ unsigned char eval(char *cmd, size_t limit)
 				cond = eval(cmd, len);
 
 				// now we need the then
-				cmd = trim_NL(cmd, &len, &limit);
+        cmd = get_string(cmd, &len, &limit);
 				tok = str_to_token(cmd, len);
 				if (tok != TK_THEN)
 				{
@@ -395,6 +387,8 @@ uint8_t getcmd(char buff[])
       case 0x08:
         // TODO: go back one position in screen
         buff[buffp]=0;
+        if (buffp > 0)
+          buffp--;
         break;
       // horizontal tab
       case 0x09:

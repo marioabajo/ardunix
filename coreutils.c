@@ -51,7 +51,7 @@ uint8_t main_ls(uint8_t argc, char *argv[])
     aux = opendir("/", &dir);
 
   if (aux != 0)
-    return 255;
+    return 1;
   
   ls_print_entry(&(dir.dd_ent),".");
 
@@ -101,23 +101,18 @@ uint8_t main_free (uint8_t argc, char *argv[])
 
 uint8_t main_times (uint8_t argc, char *argv[])
 {
-  char *argv2[NCARGS];
   unsigned long t1;
-  uint8_t i;
-
-  for (i=1; i<argc; i++)
-      argv2[i-1] = argv[i];
-  argv2[i] = NULL;
+  uint8_t i = 0;
   
   t1=millis();
   if (argc > 0)
   {
     //TODO: pass env to execve
     //FIXME: look like it's not passing correctly the parameters to the command
-    execve(argv[1], (const char **)argv2, NULL);
+    i = execve(argv[1], &argv[2], NULL);
   }
   printf_P(PSTR("millis: %ld\n"), millis() - t1);
-  return 0;
+  return i;
 }
 
 // list environment variables
@@ -142,6 +137,23 @@ uint8_t main_true(uint8_t argc, char *argv[], char *env[])
 uint8_t main_false(uint8_t argc, char *argv[], char *env[])
 {
   return 1;
+}
+
+uint8_t main_cat(uint8_t argc, char *argv[], char *env[])
+{
+  FD fd;
+  char c;
+  
+  if (argc == 0)
+    return 0;
+    
+  if ((open(argv[1], 0, &fd)) != 0)
+    return 1;
+
+  while (read(&fd, &c, 1) != 0)
+    printf("%c",c);
+
+  return 0;
 }
 
 
