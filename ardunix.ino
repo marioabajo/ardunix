@@ -29,6 +29,7 @@ const PFS2 ProgFs2[] = \
     {"true", (void *)main_true, FS_EXEC | FS_READ, 0},\
     {"false", (void *)main_false, FS_EXEC | FS_READ, 0},\
     {"cat", (void *)main_cat, FS_EXEC | FS_READ, 0},\
+    {"echo", (void *)main_echo, FS_EXEC | FS_READ, 0},\
   {0, 0, 0, 0},\
   {"etc", NULL, FS_DIR | FS_EXEC | FS_READ, 0},\
     {"motd", (void *)motd, FS_READ, sizeof(motd)},\

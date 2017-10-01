@@ -40,19 +40,25 @@ void ls_print_entry(struct dirent *entry, const char *entry_name)
 uint8_t main_ls(uint8_t argc, char *argv[])
 {
   DIR dir;
+  struct stat obj;
   struct dirent *entry;
-  uint8_t aux;
+  uint8_t aux = 0;
 
   //TODO: add more options
   //printf_P(PSTR("args: %d\n"), argc);
   if (argc > 0)
-    aux = opendir(argv[1], &dir);
+  {
+    if (stat(argv[1], &obj))
+      return 1;
+      // TODO: list files alone not only entire dirs
+    /*if ((obj.st_mode & FS_MASK_FILETYPE) == FS_FILE)
+      ls_print_entry(,NULL);
+    else*/
+      aux = opendir(argv[1], &dir);      
+  }
   else
     aux = opendir("/", &dir);
 
-  if (aux != 0)
-    return 1;
-  
   ls_print_entry(&(dir.dd_ent),".");
 
   while ((entry = readdir(&dir)) != NULL)
@@ -60,7 +66,7 @@ uint8_t main_ls(uint8_t argc, char *argv[])
 
   //closedir(&dir);
 
-  return 0;
+  return aux;
 }
 
 // Print free ram
@@ -109,7 +115,7 @@ uint8_t main_times (uint8_t argc, char *argv[])
   {
     //TODO: pass env to execve
     //FIXME: look like it's not passing correctly the parameters to the command
-    i = execve(argv[1], &argv[2], NULL);
+    i = execve(argv[1], (const char **) &argv[2], NULL);
   }
   printf_P(PSTR("millis: %ld\n"), millis() - t1);
   return i;
@@ -129,17 +135,17 @@ uint8_t main_set(uint8_t argc, char *argv[], char *env[])
   return 0;
 }
 
-uint8_t main_true(uint8_t argc, char *argv[], char *env[])
+uint8_t main_true()
 {
   return 0;
 }
 
-uint8_t main_false(uint8_t argc, char *argv[], char *env[])
+uint8_t main_false()
 {
   return 1;
 }
 
-uint8_t main_cat(uint8_t argc, char *argv[], char *env[])
+uint8_t main_cat(uint8_t argc, char *argv[])
 {
   FD fd;
   char c;
@@ -151,8 +157,24 @@ uint8_t main_cat(uint8_t argc, char *argv[], char *env[])
     return 1;
 
   while (read(&fd, &c, 1) != 0)
-    printf("%c",c);
+    printf_P(PSTR("%c"),c);
 
+  return 0;
+}
+
+uint8_t main_echo(uint8_t argc, char *argv[])
+{
+  uint8_t i = 1;
+
+  while (i <= argc)
+  {
+    printf_P(PSTR("%s"), argv[i]);
+    if (i <= argc)
+      printf_P(PSTR(" "));
+    i++;
+  }
+  printf_P(PSTR("\n"));
+  
   return 0;
 }
 

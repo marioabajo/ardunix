@@ -28,11 +28,11 @@
 #define TK_THEN  14	// then
 #define TK_UNTIL 15	// until
 #define TK_WHILE 16	// while
-#define TK_NL    17     // \n
-#define TK_CR    18     // \r
-#define TK_SC    19     // ;
-#define TK_PO    20     // (
-#define TK_PC    21     // )
+#define TK_NL    17 // \n
+#define TK_CR    18 // \r
+#define TK_SC    19 // ;
+#define TK_PO    20 // (
+#define TK_PC    21 // )
 
 // Data types
 typedef unsigned int tpos;
