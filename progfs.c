@@ -19,7 +19,7 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
         // read the name of the next entry, if it's not null copy to actualname
         if (ProgFs2[i].name)
         {
-            strncpy(actualname + ptr, ProgFs2[i].name, PATH_MAX - ptr);
+            strncpy_P(actualname + ptr, ProgFs2[i].name, PATH_MAX - ptr);
             
             //DEBUGING: printf("DEBUG progfs_stat: ptr:%d i:%d actualname:%s\n",ptr,i,actualname);
             // compare it with the filename supplied, if coincide, we have a match
@@ -38,7 +38,7 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
             if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
             {
                 // ptr points to the last position of the directory in the pathname
-                ptr += strlen(ProgFs2[i].name);
+                ptr += strlen_P(ProgFs2[i].name);
                 if (ptr>1)
                 {
                     if (ptr + 2 >= PATH_MAX)
@@ -65,6 +65,21 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
     return 255; // Not found
 }
 
+uint8_t progfs_fstat(FD *fd, struct stat *buf)
+{
+  if (fd == NULL)
+    return 1;
+  if (buf == NULL)
+    return 2;
+
+  buf->st_ino = fd->inum;
+  // TODO: check limits of fd-inum
+  buf->st_mode = ProgFs2[fd->inum].perm;
+  buf->st_size = fd->size;
+
+  return 0;
+}
+
 uint8_t progfs_opendir(const char *path, DIR *d)
 {
   struct stat file;
@@ -84,7 +99,7 @@ uint8_t progfs_opendir(const char *path, DIR *d)
   
   /* TODO: the following 5 lines repate +/- the same in other parts... consider a funciton*/
   e = &d->dd_ent;
-  strncpy(e->d_name, ProgFs2[file.st_ino].name, FILENAME_MAX);
+  strncpy_P(e->d_name, ProgFs2[file.st_ino].name, FILENAME_MAX);
   e->flags = file.st_mode;
   e->d_ino = file.st_ino;
   e->size = ProgFs2[file.st_ino].size;
@@ -109,7 +124,7 @@ struct dirent *progfs_readdir(DIR *dirp)
 
   // Read entry
   e = &dirp->dd_ent;
-  strncpy(e->d_name, ProgFs2[i].name, FILENAME_MAX);
+  strncpy_P(e->d_name, ProgFs2[i].name, FILENAME_MAX);
   e->flags = ProgFs2[i].perm;
   e->d_ino = i;
   e->size = ProgFs2[i].size;
@@ -162,7 +177,7 @@ uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
   fd->size = file.st_size;
   fd->flags = flags;
 
-  return 0;  
+  return 0; // ok
 }
 
 uint8_t progfs_read(FD *fd, void *buf, uint8_t size)

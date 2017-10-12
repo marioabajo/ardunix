@@ -2,7 +2,7 @@
 #define SH_H
 
 #include "kernel.h"
-#include "defines.h"
+#include "config.h"
 #include "coreutils.h"
 // include this to initialice the rootfs in main
 #include "fs.h"

@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "defines.h"
+#include "config.h"
 
 /*
  *  Arduino
@@ -42,6 +42,7 @@
   #define strncmp_P strncmp
   #define fprintf_P fprintf
   #define printf_P printf
+  #define snprintf_P snprintf
 #endif
 
 #endif

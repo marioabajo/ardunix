@@ -17,6 +17,7 @@ extern const PFS2 ProgFs2[];
 extern "C" {
 #endif
   uint8_t progfs_stat(const char *pathname, struct stat *buf);
+  uint8_t progfs_fstat(FD *fd, struct stat *buf);
   uint8_t progfs_opendir(const char *path, DIR *d);
   uint8_t progfs_closedir(DIR *dirp);
   struct dirent *progfs_readdir(DIR *dirp);

@@ -3,28 +3,13 @@
 #include "support.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
-unsigned char eval_if(char **cmd, size_t *len, size_t *limit);
-unsigned char eval_command(char **cmd, size_t *len, size_t *limit);
+unsigned char eval_if(char **cmd, size_t *len, size_t *limit, char *env[]);
+unsigned char eval_command(char **cmd, size_t *len, size_t *limit, char *env[]);
 
 // Functions
-char strncmp_fast(char *t1, char *t2, size_t n)
-{
-	size_t i=0;
-
-	while (i < n)
-	{
-		if (t1[i] != t2[i])
-			return FALSE;
-		if (t1[i] == '\0' || t2[i] == '\0')
-			return FALSE;
-
-		i++;
-	}
-	return TRUE;
-}
-
-char is_char(unsigned char c)
+uint8_t is_char(unsigned char c)
 {
 	if (c >= 'a' && c <='z')
 		return 1;
@@ -33,14 +18,14 @@ char is_char(unsigned char c)
 	return 0;
 }
 
-char is_number(unsigned char c)
+uint8_t is_number(unsigned char c)
 {
 	if (c >= '0' && c<='9')
 		return TRUE;
 	return FALSE;
 }
 
-char is_varname_ok(char *t, size_t n)
+uint8_t is_varname_ok(char *t, size_t n)
 {
 	size_t i=0;
 
@@ -56,74 +41,91 @@ char is_varname_ok(char *t, size_t n)
 	return TRUE;
 }
 
-char is_var(char *t, size_t n)
+uint8_t is_var(char *t, size_t n)
 {
   if (n < 2)
     return FALSE;
     
-  if (t[0] == '$' && is_varname_ok(t[1], n - 1))
+  if (t[0] == '$' && is_varname_ok(&t[1], n - 1))
     return TRUE;
 
   return FALSE;
 }
 
+uint8_t is_var_assign(char *t, size_t n)
+{
+  uint8_t i = 1;
+  
+  // find '=' character position
+  while (i < n)
+  {
+    if (t[i] == '=')
+      break;
+    i++;
+  }
+
+  if (i < n)
+    return i;
+  return FALSE;
+}
+
 token str_to_token(char *t, size_t n)
 {
-  
+
 	// First, clasify token by the length of it, it's fast
 	switch (n)
 	{
 		case 1:
-			if (strncmp_fast("!", t, 1))
+			if (*t == '!')
 				return TK_EXCL;
-			else if (strncmp_fast("{", t, 1))
+			else if (*t == '{')
 				return TK_BROP;
-			else if (strncmp_fast("}", t, 1))
+			else if (*t == '}')
 				return TK_BRCL;
-			else if (strncmp_fast(";", t, 1))
+			else if (*t == ';')
 				return TK_SC;
-			else if (strncmp_fast("\n", t, 1))
+			else if (*t == '\n')
 				return TK_NL;
-      else if (strncmp_fast("\r", t, 1))
+      else if (*t == '\r')
         return TK_CR;
-			else if (strncmp_fast("(", t, 1))
+			else if (*t == '(')
 				return TK_PO;
-			else if (strncmp_fast(")", t, 1))
+			else if (*t == ')')
 				return TK_PC;
 			break;
-		case 2:
-			if (strncmp_fast("do", t, 2))
-				return TK_DO;
-			else if (strncmp_fast("fi", t, 2))
-				return TK_FI;
-			else if (strncmp_fast("if", t, 2))
-				return TK_IF;
-			else if (strncmp_fast("in", t, 2))
-				return TK_IN;
-			break;
-		case 3:
-			if (strncmp_fast("for", t, 3))
-				return TK_FOR;
-			break;
-		case 4:
-			if (strncmp_fast("case", t, 4))
-				return TK_CASE;
-			else if (strncmp_fast("done", t, 4))
-				return TK_DONE;
-			else if (strncmp_fast("elif", t, 4))
-				return TK_ELIF;
-			else if (strncmp_fast("else", t, 4))
-				return TK_ELSE;
-			else if (strncmp_fast("esac", t, 4))
-				return TK_ESAC;
-			else if (strncmp_fast("then", t, 4))
-				return TK_THEN;
-			break;
-		case 5:
-			if (strncmp_fast("until", t, 5))
-				return TK_UNTIL;
-			else if (strncmp_fast("while", t, 5))
-				return TK_WHILE;
+    case 2:
+      if (strncmp_P(t, PSTR("do"), 2) == 0)
+        return TK_DO;
+      else if (strncmp_P(t, PSTR("fi"), 2) == 0)
+        return TK_FI;
+      else if (strncmp_P(t, PSTR("if"), 2) == 0)
+        return TK_IF;
+      else if (strncmp_P(t, PSTR("in"), 2) == 0)
+        return TK_IN;
+      break;
+    case 3:
+      if (strncmp_P(t, PSTR("for"), 3) == 0)
+        return TK_FOR;
+      break;
+    case 4:
+      if (strncmp_P(t, PSTR("case"), 4) == 0)
+        return TK_CASE;
+      else if (strncmp_P(t, PSTR("done"), 4) == 0)
+        return TK_DONE;
+      else if (strncmp_P(t, PSTR("elif"), 4) == 0)
+        return TK_ELIF;
+      else if (strncmp_P(t, PSTR("else"), 4) == 0)
+        return TK_ELSE;
+      else if (strncmp_P(t, PSTR("esac"), 4) == 0)
+        return TK_ESAC;
+      else if (strncmp_P(t, PSTR("then"), 4) == 0)
+        return TK_THEN;
+      break;
+    case 5:
+      if (strncmp_P(t, PSTR("until"), 5) == 0)
+        return TK_UNTIL;
+      else if (strncmp_P(t, PSTR("while"), 5) == 0)
+        return TK_WHILE;
 			break;
 	}
 
@@ -241,7 +243,7 @@ unsigned char find_else_fi(char *cmd, size_t *len, size_t *limit)
 	return found;
 }
 
-uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *argc)
+uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *argc, char *env[])
 {
   size_t i = 0, j = 0, len = 0;
   token tok;
@@ -254,6 +256,8 @@ uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *ar
     tok = str_to_token(src, len);
     if (tok == TK_NL || tok == TK_CR || tok == TK_SC)
       break;
+
+    // TODO: check for an env variable here
 
     memcpy(dst + j, src, len);
     argv[*argc] = dst + j;
@@ -268,7 +272,7 @@ uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *ar
   return true;
 }
 
-unsigned char eval(char *cmd, size_t limit)
+unsigned char eval(char *cmd, size_t limit, char *env[])
 {
 	token tok;
 	unsigned char error = 0;
@@ -289,12 +293,12 @@ unsigned char eval(char *cmd, size_t limit)
 
 			// a simple command followed by parameters until '\n' or ';'
 			case FALSE:
-        error = eval_command(&cmd, &len, &limit);
+        error = eval_command(&cmd, &len, &limit, env);
         break;
       
       // If structure
       case TK_IF:
-        error = eval_if(&cmd, &len, &limit);
+        error = eval_if(&cmd, &len, &limit, env);
 				break;
 
 			// for structure
@@ -312,25 +316,36 @@ unsigned char eval(char *cmd, size_t limit)
 	return error;
 }
 
-unsigned char eval_command(char **cmd, size_t *len, size_t *limit)
+unsigned char eval_command(char **cmd, size_t *len, size_t *limit, char *env[])
 {
   unsigned char error = 0;
   char str[ARGMAX];
   char *argv[NCARGS];
-  uint8_t argc = 0;
+  uint8_t argc = 0, pos;
   
+  // Check if is a variable assigment
+  if ((pos = is_var_assign(*cmd, *len)) == 1)
+  {
+    if (!is_varname_ok(*cmd, pos - 1))
+      return 1;
+    env_add_str(env, *cmd, *len, pos);
+    return 0;
+  }
+
+  //TODO: check if there is a env var here
+
   extend_string(*cmd, len, limit);
   // Discard empty commands
   if (*cmd[0] == 0)
     return error;
-  str_to_argv(*cmd, str, *len, argv, &argc);
-  //printf("DEBUG: \"%s\" (%x), %d, %d\n", argv[0], argv[0][0], len, limit);
-  error = execve(argv[0], (const char **) &argv[1], NULL);
+  str_to_argv(*cmd, str, *len, argv, &argc, env);
+  error = execve(argv[0], (const char **) &argv[1], env);
+  // TODO: add variable $? with the result of the last command
         
   return error;  
 }
 
-unsigned char eval_if(char **cmd, size_t *len, size_t *limit)
+unsigned char eval_if(char **cmd, size_t *len, size_t *limit, char *env[])
 {
   size_t len2;
   size_t limit2;
@@ -344,14 +359,14 @@ unsigned char eval_if(char **cmd, size_t *len, size_t *limit)
   if (*cmd == NULL)
     return 1;
   extend_string(*cmd, len, limit);
-  cond = eval(*cmd, *len);
+  cond = eval(*cmd, *len, env);
 
   // now we need the then
   *cmd = get_string(*cmd, len, limit);
   tok = str_to_token(*cmd, *len);
   if (tok != TK_THEN)
   {
-    printf_P(PSTR("Syntax error, then expected\n"));
+    printf_P(PSTR("Error, then expected\n"));
     return 1;
   }
 
@@ -363,13 +378,14 @@ unsigned char eval_if(char **cmd, size_t *len, size_t *limit)
   // if we don't find any "else" neither "fi", then we have a syntax error
   if (!found)
   {
-    printf_P(PSTR("Syntax error, nor else neither fi found\n"));
-    return 1;
+    /*printf_P(PSTR("Error, else or fi expected\n"));
+    return 1;*/
+    goto exitfi;
   }
 
   // process the "then" part
   if (!cond)
-    error = eval(*cmd, *limit - limit2 - len2);
+    error = eval(*cmd, *limit - limit2 - len2, env);
 
   // goto the end of the "then" section
   *cmd += *limit - limit2;
@@ -384,11 +400,12 @@ unsigned char eval_if(char **cmd, size_t *len, size_t *limit)
     found = find_else_fi(*cmd, &len2, &limit2);
     if (found != 2)
     {
-      printf_P(PSTR("Syntax error, expected fi not found\n"));
+exitfi:
+      printf_P(PSTR("Error, fi expected\n"));
       return 1;
     }
     if (cond)
-      error = eval(*cmd, *limit - limit2 - len2);
+      error = eval(*cmd, *limit - limit2 - len2, env);
     // weird adjust
     *cmd += len2;
   }
@@ -452,7 +469,18 @@ uint8_t main_sh(uint8_t argc, char *argv[], char *env[])
   char line[ARGMAX];
   size_t len;
   uint8_t exit_flag=1;
-  uint8_t result;
+  uint8_t result, i;
+
+  // add a environment if it doesn't exist
+  if (env == NULL)
+  {
+    // alloc a new env
+    if ((env = malloc(ENV_MAX * sizeof(char *))) == NULL)
+      return 1; // cannot allocate memory
+    // clean env
+    for (i=0; i< ENV_MAX; i++)
+      env[i] = NULL;
+  }
 
   do
   {
@@ -463,7 +491,7 @@ uint8_t main_sh(uint8_t argc, char *argv[], char *env[])
     len = getcmd(line);
     if (!len)
       continue;
-    result = eval(line, len);
+    result = eval(line, len, env);
     printf_P(PSTR("Result: %d\n"), result);
 
   // TODO: Implement a decent exit mechanism

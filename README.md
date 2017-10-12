@@ -9,8 +9,6 @@ Objectives for v.1:
 - Simple interface with the shell (using read, write calls)
 - Support for automatically run commands at boot
 
-Note: Use full paths (eg: /bin/ls /bin) as PATH is not set
-
 ## Commands
 
 - sh
@@ -20,6 +18,9 @@ Note: Use full paths (eg: /bin/ls /bin) as PATH is not set
 - true
 - false
 - cat
+- echo
+- debug
+- set
 
 ## Api
 

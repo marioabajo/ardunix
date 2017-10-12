@@ -4,6 +4,47 @@
 #include <stdio.h>
 
 // add/update new environment variable
+bool env_add_str(char *env[], char *str, uint8_t len, uint8_t pos)
+{
+  uint8_t i;
+  
+  if (env == NULL)
+    return 1; // no environment defined
+
+  // Look for the last item in the list
+  i = 0;
+  while (env[i] != NULL && i < ENV_MAX)
+  {
+    // found an existing env with the same name, overwrite
+    if (strncmp(str, env[i], pos) == 0)
+    {
+      free(env[i]);
+      env[i] = NULL;
+      break;
+    }
+    i++;
+  }
+
+  // if it's an empty env variable 'x=' then delete the env
+  if (pos == len - 1)
+    return 0;
+
+  if (i >= ENV_MAX)
+    return 2; // too much env variables defined
+
+  if ((env[i] = malloc(len + 1)) == NULL)
+    return 3; // cannot allocate memory
+
+  // copy 
+  memcpy(env[i], str, len);
+  // end string with \0 just in case
+  env[i][len] = 0;
+  
+  return 0;
+}
+
+/*
+// add/update new environment variable
 bool env_add(struct dict_list **env, const char *key, const char *value)
 {
 	struct dict_list *last=NULL, *a=*env;
@@ -101,4 +142,4 @@ void env_test()
   printf("env: B?  %s\n",env_get(env,"B")); // get var next to deleted
   printf("env: HOME?  %s\n",env_get(env,"HOME"));
 }
-#endif
+#endif*/

@@ -75,30 +75,10 @@ uint8_t main_free (uint8_t argc, char *argv[])
 #ifdef __AVR__
   extern unsigned int __heap_start;
   extern void *__brkval;
-  struct __freelist{
-    size_t sz;
-    struct __freelist *nx;
-  } *current;
-  extern struct __freelist *__flp;
-  int free_memory;
+  unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
   int total = 0;
 
-  for (current = __flp; current; current = current->nx) {
-    total += 2; /* Add two bytes for the memory block's header  */
-    total += (int) current->sz;
-  }
-  
-  if ((int)__brkval == 0) {
-    free_memory = ((int)&free_memory) - ((int)&__heap_start);
-  } else {
-    free_memory = ((int)&free_memory) - ((int)__brkval);
-    free_memory += total;
-  }
-  printf_P(PSTR("Free: %d\n"),free_memory);
-  
-  /*extern int __heap_start, *__brkval;
-  int v;
-  printf("Free: %d\n", (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval));*/
+  printf_P(PSTR("total=%d data=%d heap=%d stack=%d free=%d\n"), RAMEND - RAMSTART, (int) &__heap_start - RAMSTART, HEAPEND - (int) &__heap_start, RAMEND - (int) &total, (int) &total - HEAPEND + total);  
 #else
   printf("Free not implemented in this arch.\n");
 #endif
@@ -124,13 +104,14 @@ uint8_t main_times (uint8_t argc, char *argv[])
 // list environment variables
 uint8_t main_set(uint8_t argc, char *argv[], char *env[])
 {
-  /*struct dict_list *c=*env;
+  uint8_t i = 0;
 
-  while (c != NULL)
+  while (i < ENV_MAX)
   {
-    printf("%s=%s\n", c->key, c->value);
-    c = (struct dict_list *) c->next;
-  }*/
+    if (env[i] != NULL)
+      printf_P(PSTR("%s\n"), env[i]);
+    i++;
+  }
 
   return 0;
 }
@@ -178,4 +159,73 @@ uint8_t main_echo(uint8_t argc, char *argv[])
   return 0;
 }
 
+void debug_dump(uint16_t src, const void *ptr, size_t msize)
+{
+  size_t i, j;
+  uint8_t *p, d;
+
+  printf_P(PSTR("Size: 0x%x\n"), msize);
+  for (i=0; i < msize; i+=16)
+  {
+    p = (uint8_t *) ptr + i;
+    printf_P(PSTR("0x%x: "), src + i);
+    for (j=0; j < 32; j++)
+    {
+      d = *(p + (j & 0xf));
+      if (j < 16)
+        printf_P(PSTR("%x%x "), d >> 4, d & 0x0F);
+      else
+        printf_P(PSTR("%c"), (d < 32) ? '.' : d);
+    }
+    printf_P(PSTR("\n"));
+  }
+}
+
+uint8_t main_debug(uint8_t argc, char *argv[])
+{
+
+#ifdef __AVR__
+  extern unsigned int __heap_start;
+  extern void *__brkval;
+  uint16_t marker;
+  int msize = 0;
+  unsigned int DATAEND =(int) &__heap_start;
+  unsigned int DATASIZE = DATAEND - RAMSTART;
+  unsigned int HEAPSTART = (int) &__heap_start;
+  unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+
+  if (argc == 0)
+    printf_P(PSTR("Use -h to print help\n"));
+  while (argc > 0)
+  {
+    if (argv[argc][0] != '-' || argv[argc][2] != 0)
+    {
+      printf_P(PSTR("Unknown param: \"%s\"\n"), argv[argc]);
+      return 1;
+    }
+    switch(argv[argc][1])
+    {
+      case 'h':
+        printf_P(PSTR("Debug help:\n -d  dump data memory\n -s  print stack\n -H  dump heap\n"));
+        break;
+      case 'd':
+        debug_dump((uint16_t) RAMSTART, (void*) RAMSTART, DATASIZE);
+        break;
+      case 's':
+        msize = RAMEND - (uint16_t) &marker + 1;
+        debug_dump((uint16_t) &marker, (void*) &marker, msize);
+        break;
+      case 'H':
+        msize = HEAPEND - HEAPSTART;
+        debug_dump((uint16_t) HEAPSTART, (void*) HEAPSTART, msize);
+        break;
+
+    }
+    argc--;
+  }
+#else
+  printf("debug not implemented in this arch.\n");
+#endif
+  return 0;
+}
 

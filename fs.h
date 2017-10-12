@@ -96,7 +96,9 @@ typedef struct file_descriptor
 extern "C"{
 #endif
   uint8_t statvfs(const char* path, struct statvfs *buf);
+  uint8_t fstatvfs(FD *fd, struct statvfs *buf);
   uint8_t stat(const char *pathname, struct stat *buf);
+  uint8_t fstat(FD *fd, struct stat *buf);
   uint8_t opendir(const char *path, DIR *d);
   uint8_t closedir(DIR *dirp);
   struct dirent *readdir(DIR *dirp);

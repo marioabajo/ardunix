@@ -14,6 +14,7 @@ extern "C"{
   uint8_t main_false();
   uint8_t main_cat(uint8_t argc, char *argv[]);
   uint8_t main_echo(uint8_t argc, char *argv[]);
+  uint8_t main_debug(uint8_t argc, char *argv[]);
 #ifdef __cplusplus
 }
 #endif
