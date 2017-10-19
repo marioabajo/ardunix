@@ -219,6 +219,7 @@ uint8_t main_debug(char *argv[])
     }
     i++;
   }
+  return 0;
 error:
   printf_P(PSTR("Unknown param: \"%s\"\n"), argv[i]);
   return 1;
