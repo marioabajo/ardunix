@@ -35,13 +35,12 @@
 #define TK_PC    21 // )
 
 // Data types
-typedef unsigned int tpos;
 typedef unsigned char token;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  uint8_t main_sh(uint8_t argc, char *argv[], char *env[]);
+  uint8_t main_sh(char *argv[], char *env[]);
 #ifdef __cplusplus
 }
 #endif

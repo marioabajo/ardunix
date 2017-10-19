@@ -99,8 +99,8 @@ int main(void)
 {
   // Show welcome message
   // TODO: this variable wates memory
-  const char *argv[]={"/etc/issue", NULL};
-  exec("/bin/cat", argv);
+  const char *argv[]={"/bin/cat", "/etc/issue", NULL};
+  exec(argv);
 
 #ifdef DEBUG
   printf("execve: %d\n", exec("bin", NULL));
@@ -110,8 +110,9 @@ int main(void)
   printf("execve: %d\n", exec("/etc/motd", NULL));
   printf("execve: %d\n", exec("/etc/script", NULL));  
 #endif
-  
-  printf_P(PSTR("execve: %d\n"), exec("/bin/sh", NULL));
+
+  const char *argv2[]={"/bin/sh", NULL};
+  execve(argv2, NULL);
   //main_sh(0, NULL, NULL);
   
   printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));

@@ -6,15 +6,15 @@
 #ifdef __cplusplus
 extern "C"{
 #endif
-  uint8_t main_ls(uint8_t argc, char *argv[]);
-  uint8_t main_free (uint8_t argc, char *argv[]);
-  uint8_t main_times (uint8_t argc, char *argv[]);
-  uint8_t main_set(uint8_t argc, char *argv[], char *env[]);
+  uint8_t main_ls(char *argv[]);
+  uint8_t main_free (char *argv[]);
+  uint8_t main_times (char *argv[]);
+  uint8_t main_set(char *argv[], char *env[]);
   uint8_t main_true();
   uint8_t main_false();
-  uint8_t main_cat(uint8_t argc, char *argv[]);
-  uint8_t main_echo(uint8_t argc, char *argv[]);
-  uint8_t main_debug(uint8_t argc, char *argv[]);
+  uint8_t main_cat(char *argv[]);
+  uint8_t main_echo(char *argv[]);
+  uint8_t main_debug(char *argv[]);
 #ifdef __cplusplus
 }
 #endif

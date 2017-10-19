@@ -1,6 +1,5 @@
 #include "sh.h"
 #include "kernel.h"
-#include "support.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -243,12 +242,10 @@ unsigned char find_else_fi(char *cmd, size_t *len, size_t *limit)
 	return found;
 }
 
-uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *argc, char *env[])
+uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, char *env[])
 {
   size_t i = 0, j = 0, len = 0;
   token tok;
-
-  *argc = 0;
   
   while ((src = get_string(src, &len, &limit)) != NULL)
   {
@@ -260,13 +257,16 @@ uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, uint8_t *ar
     // TODO: check for an env variable here
 
     memcpy(dst + j, src, len);
-    argv[*argc] = dst + j;
+    argv[i] = dst + j;
     j += len;
-    dst[j++] = 0;
+    dst[j] = 0;
+    i++;
+    j++;
+    if (i >= NCARGS - 1) // save the last arg fo rthe NULL termination
+      return false;
     //DEBUG: printf("D: j:%d len:%d src:%x argc:%d (%s)\n", j, len, src, *argc, argv[*argc]);
-    *argc = *argc + 1;
   }
-  for (i = *argc; i < NCARGS; i++)
+  for (; i < NCARGS; i++)
     argv[i] = NULL;
 
   return true;
@@ -282,7 +282,7 @@ unsigned char eval(char *cmd, size_t limit, char *env[])
 	while (cmd != NULL)
 	{
 		tok = str_to_token(cmd, len);
-		//printf("+ %.*s  (token: %d)\n",(int)len, cmd, tok);
+
 		switch (tok)
 		{
       // ignore new lines, carrier returns and semicolons
@@ -321,7 +321,7 @@ unsigned char eval_command(char **cmd, size_t *len, size_t *limit, char *env[])
   unsigned char error = 0;
   char str[ARGMAX];
   char *argv[NCARGS];
-  uint8_t argc = 0, pos;
+  uint8_t pos;
   
   // Check if is a variable assigment
   if ((pos = is_var_assign(*cmd, *len)) == 1)
@@ -338,8 +338,8 @@ unsigned char eval_command(char **cmd, size_t *len, size_t *limit, char *env[])
   // Discard empty commands
   if (*cmd[0] == 0)
     return error;
-  str_to_argv(*cmd, str, *len, argv, &argc, env);
-  error = execve(argv[0], (const char **) &argv[1], env);
+  str_to_argv(*cmd, str, *len, argv, env);
+  error = execve((const char **) argv, env);
   // TODO: add variable $? with the result of the last command
         
   return error;  
@@ -412,7 +412,7 @@ exitfi:
 
   // goto fi
   *cmd += *limit - limit2 - len2;
-  *limit = limit2 + len2;
+  *limit = limit2 + len2 - *len;
   *len = 0;
 
   return error;
@@ -463,7 +463,7 @@ uint8_t getcmd(char buff[])
   return buffp;
 }
 
-uint8_t main_sh(uint8_t argc, char *argv[], char *env[])
+uint8_t main_sh(char *argv[], char *env[])
 {
   // input line buffer
   char line[ARGMAX];

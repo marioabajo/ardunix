@@ -24,20 +24,16 @@ void ls_print_entry(struct dirent *entry, const char *entry_name)
     case FS_DEV: // Device
       c = 'c'; // TODO: Another case for each type of dev
   }
-  putchar(c);
-  c = (entry->flags & FS_READ) ? 'r' : '-';
-  putchar(c);
-  c = (entry->flags & FS_WRITE) ? 'w' : '-';
-  putchar(c);
-  c = (entry->flags & FS_EXEC) ? 'x' : '-';
-  putchar(c);
   if (entry_name != NULL)
     name = (char *) entry_name;
-  printf_P(PSTR(" %4d %s\n"), entry->size, name);
+  printf_P(PSTR("%c%c%c%c %4d %s\n"), c, (entry->flags & FS_READ) ? 'r' : '-'
+                                       , (entry->flags & FS_WRITE) ? 'w' : '-'
+                                       , (entry->flags & FS_EXEC) ? 'x' : '-'
+                                       , entry->size, name);
 }
 
 // list files and directories
-uint8_t main_ls(uint8_t argc, char *argv[])
+uint8_t main_ls(char *argv[])
 {
   DIR dir;
   struct stat obj;
@@ -46,7 +42,9 @@ uint8_t main_ls(uint8_t argc, char *argv[])
 
   //TODO: add more options
   //printf_P(PSTR("args: %d\n"), argc);
-  if (argc > 0)
+  if (argv[1] == NULL)
+    aux = opendir("/", &dir);
+  else
   {
     if (stat(argv[1], &obj))
       return 1;
@@ -54,10 +52,8 @@ uint8_t main_ls(uint8_t argc, char *argv[])
     /*if ((obj.st_mode & FS_MASK_FILETYPE) == FS_FILE)
       ls_print_entry(,NULL);
     else*/
-      aux = opendir(argv[1], &dir);      
+      aux = opendir(argv[1], &dir);
   }
-  else
-    aux = opendir("/", &dir);
 
   ls_print_entry(&(dir.dd_ent),".");
 
@@ -70,7 +66,7 @@ uint8_t main_ls(uint8_t argc, char *argv[])
 }
 
 // Print free ram
-uint8_t main_free (uint8_t argc, char *argv[])
+uint8_t main_free (char *argv[])
 {
 #ifdef __AVR__
   extern unsigned int __heap_start;
@@ -85,24 +81,24 @@ uint8_t main_free (uint8_t argc, char *argv[])
   return 0;
 }
 
-uint8_t main_times (uint8_t argc, char *argv[])
+uint8_t main_times (char *argv[])
 {
   unsigned long t1;
   uint8_t i = 0;
   
   t1=millis();
-  if (argc > 0)
+  if (argv[1] != NULL)
   {
     //TODO: pass env to execve
     //FIXME: look like it's not passing correctly the parameters to the command
-    i = execve(argv[1], (const char **) &argv[2], NULL);
+    i = execve((const char **) &argv[1], NULL);
   }
   printf_P(PSTR("millis: %ld\n"), millis() - t1);
   return i;
 }
 
 // list environment variables
-uint8_t main_set(uint8_t argc, char *argv[], char *env[])
+uint8_t main_set(char *argv[], char *env[])
 {
   uint8_t i = 0;
 
@@ -126,12 +122,12 @@ uint8_t main_false()
   return 1;
 }
 
-uint8_t main_cat(uint8_t argc, char *argv[])
+uint8_t main_cat(char *argv[])
 {
   FD fd;
   char c;
   
-  if (argc == 0)
+  if (argv[1] == NULL)
     return 0;
     
   if ((open(argv[1], 0, &fd)) != 0)
@@ -143,14 +139,14 @@ uint8_t main_cat(uint8_t argc, char *argv[])
   return 0;
 }
 
-uint8_t main_echo(uint8_t argc, char *argv[])
+uint8_t main_echo(char *argv[])
 {
   uint8_t i = 1;
 
-  while (i <= argc)
+  while (argv[i] != NULL)
   {
     printf_P(PSTR("%s"), argv[i]);
-    if (i <= argc)
+    if (argv[i + 1] != NULL)
       printf_P(PSTR(" "));
     i++;
   }
@@ -181,7 +177,7 @@ void debug_dump(uint16_t src, const void *ptr, size_t msize)
   }
 }
 
-uint8_t main_debug(uint8_t argc, char *argv[])
+uint8_t main_debug(char *argv[])
 {
 
 #ifdef __AVR__
@@ -193,17 +189,16 @@ uint8_t main_debug(uint8_t argc, char *argv[])
   unsigned int DATASIZE = DATAEND - RAMSTART;
   unsigned int HEAPSTART = (int) &__heap_start;
   unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-
-  if (argc == 0)
+  uint8_t i = 1;
+ 
+  if (argv[1] == NULL)
     printf_P(PSTR("Use -h to print help\n"));
-  while (argc > 0)
+  while (argv[i] != NULL > 0)
   {
-    if (argv[argc][0] != '-' || argv[argc][2] != 0)
-    {
-      printf_P(PSTR("Unknown param: \"%s\"\n"), argv[argc]);
-      return 1;
-    }
-    switch(argv[argc][1])
+    if (argv[i][0] != '-' || argv[i][2] != 0)
+      goto error;
+
+    switch(argv[i][1])
     {
       case 'h':
         printf_P(PSTR("Debug help:\n -d  dump data memory\n -s  print stack\n -H  dump heap\n"));
@@ -219,10 +214,14 @@ uint8_t main_debug(uint8_t argc, char *argv[])
         msize = HEAPEND - HEAPSTART;
         debug_dump((uint16_t) HEAPSTART, (void*) HEAPSTART, msize);
         break;
-
+      default:
+        goto error;
     }
-    argc--;
+    i++;
   }
+error:
+  printf_P(PSTR("Unknown param: \"%s\"\n"), argv[i]);
+  return 1;
 #else
   printf("debug not implemented in this arch.\n");
 #endif

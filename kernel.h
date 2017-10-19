@@ -8,8 +8,10 @@
 #ifdef __cplusplus
 extern "C"{
 #endif
-  uint8_t exec(const char *filename, const char *argv[]);
-  uint8_t execve(const char *filename, const char *argv[], char *envp[]);
+//  uint8_t exec(const char *filename, const char *argv[]);
+  uint8_t exec(const char *argv[]);
+//  uint8_t execve(const char *filename, const char *argv[], char *envp[]);
+  uint8_t execve(const char *argv[], char *envp[]);
 #ifdef __cplusplus
 }
 #endif
