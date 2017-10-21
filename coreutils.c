@@ -8,9 +8,9 @@
 void ls_print_entry(struct dirent *entry, const char *entry_name)
 {
   char c = 0;
-  char *name = entry->d_name;
+  uint8_t f = entry->flags;
 
-  switch(entry->flags & FS_MASK_FILETYPE)
+  switch(f & FS_MASK_FILETYPE)
   {
     case FS_FILE:  // File
       c = '-';
@@ -24,12 +24,11 @@ void ls_print_entry(struct dirent *entry, const char *entry_name)
     case FS_DEV: // Device
       c = 'c'; // TODO: Another case for each type of dev
   }
-  if (entry_name != NULL)
-    name = (char *) entry_name;
-  printf_P(PSTR("%c%c%c%c %4d %s\n"), c, (entry->flags & FS_READ) ? 'r' : '-'
-                                       , (entry->flags & FS_WRITE) ? 'w' : '-'
-                                       , (entry->flags & FS_EXEC) ? 'x' : '-'
-                                       , entry->size, name);
+
+  printf_P(PSTR("%c%c%c%c %4d %s\n"), c, (f & FS_READ) ? 'r' : '-'
+                                       , (f & FS_WRITE) ? 'w' : '-'
+                                       , (f & FS_EXEC) ? 'x' : '-'
+                                       , entry->size, entry_name);
 }
 
 // list files and directories
@@ -58,7 +57,7 @@ uint8_t main_ls(char *argv[])
   ls_print_entry(&(dir.dd_ent),".");
 
   while ((entry = readdir(&dir)) != NULL)
-      ls_print_entry(entry, NULL);
+      ls_print_entry(entry, entry->d_name);
 
   //closedir(&dir);
 

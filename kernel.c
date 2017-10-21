@@ -1,17 +1,38 @@
 #include "kernel.h"
 #include "progfs.h"
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
 
 
-//uint8_t exec(const char *filename, const char *argv[])
-uint8_t exec(const char *argv[])
+uint8_t exec(const char *argv, ...)
 {
-    return execve(argv, NULL);
+  char *arglist[NCARGS], *p;
+  uint8_t i = 0;
+  va_list va;
+
+  if(argv == NULL)
+    return 0;
+
+  arglist[i++] = (char *) argv;
+  
+  va_start(va, argv);
+
+  if (i < NCARGS)
+  {
+    p = va_arg(va, char *);
+    if (*p != 0)
+      arglist[i++] = p;
+  }
+    
+  va_end(va);
+
+  arglist[i] = NULL;
+  
+  return execve((const char **) arglist, NULL);
 }
 
-//uint8_t execve(const char *filename, const char *argv[], char *envp[])
 uint8_t execve(const char *argv[], char *envp[])
 {
   struct stat file;
@@ -20,7 +41,6 @@ uint8_t execve(const char *argv[], char *envp[])
   char header[3] = {0, 0, 0};
   char *fullfilename;
 
-  //if (filename == NULL)
   if (argv == NULL || argv[0] == NULL)
     return 1; // filename invalid
 
