@@ -1,11 +1,21 @@
 /*
  * 
  */
+ 
+//#define CMD_LS false
+//#define CMD_SH false
+//#define CMD_FREE false
+//#define CMD_TIMES false
+//#define CMD_SET false
+//#define CMD_TRUE false
+//#define CMD_FALSE false
+//#define CMD_CAT false
+//#define CMD_ECHO false
+//#define CMD_DEBUG false
 
 #include "ardunix.h"
 
 //#define DEBUG 1
-
 #ifdef __AVR__
 
 static FILE uart = {0} ;
@@ -46,18 +56,18 @@ int main(void)
 #endif
 {
   // Show welcome message
-  exec("/bin/cat", "/etc/issue");
+  execl("/bin/cat", "/etc/issue");
 
 #ifdef DEBUG
-  printf("execve: %d\n", exec("bin"));
-  printf("execve: %d\n", exec("/bin"));
-  printf("execve: %d\n", exec("/bin/ls"));
-  printf("execve: %d\n", exec("/bin/lso"));
-  printf("execve: %d\n", exec("/etc/motd"));
-  printf("execve: %d\n", exec("/etc/script"));  
+  printf("execve: %d\n", execl("bin"));
+  printf("execve: %d\n", execl("/bin"));
+  printf("execve: %d\n", execl("/bin/ls"));
+  printf("execve: %d\n", execl("/bin/lso"));
+  printf("execve: %d\n", execl("/etc/motd"));
+  printf("execve: %d\n", execl("/etc/script"));  
 #endif
 
-  exec("/bin/sh");
+  execl("/bin/sh");
   //main_sh(NULL, NULL);
   
   printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));

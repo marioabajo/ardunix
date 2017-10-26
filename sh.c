@@ -70,7 +70,6 @@ uint8_t is_var_assign(char *t, size_t n)
 
 token str_to_token(char *t, size_t n)
 {
-
 	// First, clasify token by the length of it, it's fast
 	switch (n)
 	{
@@ -159,7 +158,7 @@ char * get_string(char *old_cmd, size_t *len, size_t *limit)
 		if (*limit == 0)
 		{
 			if (*len > 0)
-				return cmd;
+				break;
 			return NULL;
 		}
 
@@ -206,7 +205,7 @@ void extend_string(char *cmd, size_t *len, size_t *limit)
 		tok = str_to_token(aux, *len);
 		if (tok == TK_NL || tok == TK_CR || tok == TK_SC)
 			break;
-		//printf("DEBUG: %.*s\n", (int)len2, aux);
+		//printf("DEBUG: %.*s\n", (int)*len, aux);
 		aux = get_string(aux, len, limit);
 	}
 	*len = limit2 - *limit;
@@ -262,7 +261,7 @@ uint8_t str_to_argv(char *src, char *dst, size_t limit, char **argv, char *env[]
     dst[j] = 0;
     i++;
     j++;
-    if (i >= NCARGS - 1) // save the last arg fo rthe NULL termination
+    if (i >= NCARGS - 1) // save the last arg for the NULL termination
       return false;
     //DEBUG: printf("D: j:%d len:%d src:%x argc:%d (%s)\n", j, len, src, *argc, argv[*argc]);
   }
@@ -278,9 +277,10 @@ unsigned char eval(char *cmd, size_t limit, char *env[])
 	unsigned char error = 0;
 	size_t len = 0;
 
-	cmd = get_string(cmd, &len, &limit);
-	while (cmd != NULL)
+  do
 	{
+    if ((cmd = get_string(cmd, &len, &limit)) == NULL)
+      break;
 		tok = str_to_token(cmd, len);
 
 		switch (tok)
@@ -310,8 +310,7 @@ unsigned char eval(char *cmd, size_t limit, char *env[])
 				printf_P(PSTR("Syntax error: %s\n"), cmd);
 				return 1;
 		}
-		cmd = get_string(cmd, &len, &limit);
-	}
+	} while (true);
 
 	return error;
 }

@@ -71,7 +71,7 @@ struct stat
 {
   long     st_ino;         /* inode number */
   uint8_t  st_mode;        /* protection */
-  uint8_t  st_size;        /* total size, in bytes */
+  uint16_t st_size;        /* total size, in bytes */
 };
 
 struct statvfs

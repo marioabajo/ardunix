@@ -5,10 +5,9 @@
 #include <Arduino.h>
 #endif
 
-void ls_print_entry(struct dirent *entry, const char *entry_name)
+void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 {
   char c = 0;
-  uint8_t f = entry->flags;
 
   switch(f & FS_MASK_FILETYPE)
   {
@@ -28,40 +27,55 @@ void ls_print_entry(struct dirent *entry, const char *entry_name)
   printf_P(PSTR("%c%c%c%c %4d %s\n"), c, (f & FS_READ) ? 'r' : '-'
                                        , (f & FS_WRITE) ? 'w' : '-'
                                        , (f & FS_EXEC) ? 'x' : '-'
-                                       , entry->size, entry_name);
+                                       , size, entry_name);
 }
 
 // list files and directories
 uint8_t main_ls(char *argv[])
 {
   DIR dir;
+  char *fn = "/";
   struct stat obj;
   struct dirent *entry;
-  uint8_t aux = 0;
+  uint8_t ret = 0;
+  uint8_t i = 1;
+  bool _exit = 0;
 
-  //TODO: add more options
-  //printf_P(PSTR("args: %d\n"), argc);
-  if (argv[1] == NULL)
-    aux = opendir("/", &dir);
-  else
+  // TODO: initialize fn with CWD env variable
+  while (! _exit)
   {
-    if (stat(argv[1], &obj))
-      return 1;
-      // TODO: list files alone not only entire dirs
-    /*if ((obj.st_mode & FS_MASK_FILETYPE) == FS_FILE)
-      ls_print_entry(,NULL);
-    else*/
-      aux = opendir(argv[1], &dir);
+    if (argv[i] != NULL)
+      fn = argv[i];
+    else
+    {
+      _exit = 1;
+      if (i > 1)
+        break;
+    }
+
+    if (stat(fn, &obj))
+      ret = 1;
+    else
+    {
+      if (obj.st_mode & FS_DIR)
+      {
+        if (opendir(fn, &dir))
+          ret = 1;
+        else
+        {
+          ls_print_entry(dir.dd_ent.flags, dir.dd_ent.size ,".");
+          while ((entry = readdir(&dir)) != NULL)
+            ls_print_entry(entry->flags, entry->size, entry->d_name);
+        }
+      }
+      else
+        ls_print_entry(obj.st_mode, obj.st_size, fn);
+    }
+          
+    i++;
   }
 
-  ls_print_entry(&(dir.dd_ent),".");
-
-  while ((entry = readdir(&dir)) != NULL)
-      ls_print_entry(entry, entry->d_name);
-
-  //closedir(&dir);
-
-  return aux;
+  return ret;
 }
 
 // Print free ram
@@ -70,10 +84,11 @@ uint8_t main_free (char *argv[])
 #ifdef __AVR__
   extern unsigned int __heap_start;
   extern void *__brkval;
-  unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+  unsigned int HEAPEND = (__brkval == 0 ? (unsigned int) &__heap_start : (unsigned int) __brkval);
   int total = 0;
 
-  printf_P(PSTR("total=%d data=%d heap=%d stack=%d free=%d\n"), RAMEND - RAMSTART, (int) &__heap_start - RAMSTART, HEAPEND - (int) &__heap_start, RAMEND - (int) &total, (int) &total - HEAPEND + total);  
+  printf_P(PSTR("total=%d data=%d heap=%d stack=%d free=%d\n"), RAMEND - RAMSTART, (unsigned int) &__heap_start - RAMSTART, 
+           HEAPEND - (unsigned int) &__heap_start, RAMEND - (unsigned int) &total, (unsigned int) &total - HEAPEND + total);
 #else
   printf("Free not implemented in this arch.\n");
 #endif
@@ -180,19 +195,17 @@ uint8_t main_debug(char *argv[])
 {
 
 #ifdef __AVR__
-  extern unsigned int __heap_start;
-  extern void *__brkval;
   uint16_t marker;
   int msize = 0;
+  extern unsigned int __heap_start;
+  extern void *__brkval;
   unsigned int DATAEND =(int) &__heap_start;
   unsigned int DATASIZE = DATAEND - RAMSTART;
   unsigned int HEAPSTART = (int) &__heap_start;
   unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
   uint8_t i = 1;
  
-  if (argv[1] == NULL)
-    printf_P(PSTR("Use -h to print help\n"));
-  while (argv[i] != NULL > 0)
+  while (argv[i] != NULL)
   {
     if (argv[i][0] != '-' || argv[i][2] != 0)
       goto error;
@@ -221,6 +234,7 @@ uint8_t main_debug(char *argv[])
   return 0;
 error:
   printf_P(PSTR("Unknown param: \"%s\"\n"), argv[i]);
+  printf_P(PSTR("Use -h to print help\n"));
   return 1;
 #else
   printf("debug not implemented in this arch.\n");

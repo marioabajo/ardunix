@@ -6,7 +6,41 @@
 #include <stdlib.h>
 
 
-uint8_t exec(const char *argv, ...)
+/*uint8_t execle(const char *argv, ...)
+{
+  char *arglist[NCARGS], *p;
+  char **env = NULL;
+  uint8_t i = 0;
+  va_list va;
+
+  if(argv == NULL)
+    return 0;
+
+  arglist[i++] = (char *) argv;
+  
+  va_start(va, argv);
+
+  if (i < NCARGS)
+  {
+    p = va_arg(va, char *);
+    if (*p != 0)
+      arglist[i++] = p;
+  }
+  else if (i == NCARGS)
+    env = va_arg(va, char **);
+    
+  va_end(va);
+
+  // if envp is NULL then, the last recorded value in arglist in the env
+  if (env == NULL)
+    env = (char **) arglist[--i];
+
+  arglist[i] = NULL;
+  
+  return execve((const char **) arglist, env);
+}*/
+
+uint8_t execl(const char *argv, ...)
 {
   char *arglist[NCARGS], *p;
   uint8_t i = 0;
@@ -31,6 +65,11 @@ uint8_t exec(const char *argv, ...)
   arglist[i] = NULL;
   
   return execve((const char **) arglist, NULL);
+}
+
+uint8_t exec(const char *argv[])
+{
+  return execve(argv, NULL);
 }
 
 uint8_t execve(const char *argv[], char *envp[])
