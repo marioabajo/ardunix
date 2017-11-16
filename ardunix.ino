@@ -1,8 +1,16 @@
 /*
  * 
  */
- 
+
+//#define CMD_SH_SIMPLE true
+
+#include "ardunix.h"
+
+/* ARDUNIX CONFIG PARAMETERS
+ * ========================= */
+
 //#define CMD_LS false
+//#define CMD_CD false
 //#define CMD_SH false
 //#define CMD_FREE false
 //#define CMD_TIMES false
@@ -12,10 +20,26 @@
 //#define CMD_CAT false
 //#define CMD_ECHO false
 //#define CMD_DEBUG false
-
-#include "ardunix.h"
-
 //#define DEBUG 1
+
+// Add files (and content) to internal filesystem
+const char PROGMEM _etc_test[] = "test";
+const char PROGMEM _etc_test_empty[] = "empty";
+const char PROGMEM _etc_script[] = "script";
+const char PROGMEM script[] = "#!/bin/sh\n\nif /bin/false\nthen\n  /bin/ls /bin\nelse\n  /bin/ls /etc\nfi\n";
+
+#define PROGFS_ENT_ETC_EXTRAS \
+ PROGFS_ENTRY(_etc_script, script, FS_EXEC | FS_READ, sizeof(script)) \
+ PROGFS_ENTRY(_etc_test, NULL, FS_DIR | FS_EXEC | FS_READ, 0) \
+ PROGFS_ENTRY(_etc_test_empty, NULL, FS_EXEC | FS_READ, 0) \
+ PROGFS_ENTRY(0, 0, 0, 0)
+
+#define PROGFS_ENT_BIN_EXTRAS
+/* END ARDUNIX CONFIG */
+
+// Init ardunix internal filesystem
+DEF_PROGFS
+
 #ifdef __AVR__
 
 static FILE uart = {0} ;
@@ -59,12 +83,12 @@ int main(void)
   execl("/bin/cat", "/etc/issue");
 
 #ifdef DEBUG
-  printf("execve: %d\n", execl("bin"));
-  printf("execve: %d\n", execl("/bin"));
-  printf("execve: %d\n", execl("/bin/ls"));
-  printf("execve: %d\n", execl("/bin/lso"));
-  printf("execve: %d\n", execl("/etc/motd"));
-  printf("execve: %d\n", execl("/etc/script"));  
+  printf_P(PSTR("execve: %d\n"), execl("bin"));
+  printf_P(PSTR("execve: %d\n"), execl("/bin"));
+  printf_P(PSTR("execve: %d\n"), execl("/bin/ls"));
+  printf_P(PSTR("execve: %d\n"), execl("/bin/lso"));
+  printf_P(PSTR("execve: %d\n"), execl("/etc/motd"));
+  printf_P(PSTR("execve: %d\n"), execl("/etc/script"));  
 #endif
 
   execl("/bin/sh");

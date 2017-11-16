@@ -35,7 +35,16 @@
 #define TK_PC    21 // )
 
 // Data types
+struct block
+{
+  char *p;
+  size_t pos;
+  size_t len;
+  size_t limit;
+};
+
 typedef unsigned char token;
+typedef struct block block;
 
 #ifdef __cplusplus
 extern "C" {

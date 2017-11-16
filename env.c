@@ -3,126 +3,94 @@
 #include <string.h>
 #include <stdio.h>
 
-// add/update new environment variable
-bool env_add_str(char *env[], char *str, uint8_t len, uint8_t pos)
+uint8_t env_search(char *env[], char *key, uint8_t lenk)
 {
   uint8_t i;
-  
+
+  // Look for the item in the list
+  i = 0;
+  while (i < ENV_MAX)
+  {
+    // first, look for the equal and if the key size math our given length, compare it
+    if (env[i] != NULL)
+      if (env[i][lenk] == '=')
+         if (strncmp(key, env[i], lenk) == 0)
+          return i;
+
+    i++;
+  }
+  return 255; // Not found
+}
+
+// add/update new environment variable
+uint8_t env_add(char *env[], char *key, char *value)
+{
+  return env_add_l(env, key, strlen(key), value, strlen(value));
+}
+
+// add/update new environment variable (with string limits)
+uint8_t env_add_l(char *env[], char *key, uint8_t lenk, char *value, uint8_t lenv)
+{
+  uint8_t i;
+  char *p;
+ 
   if (env == NULL)
     return 1; // no environment defined
 
-  // Look for the last item in the list
-  i = 0;
-  while (env[i] != NULL && i < ENV_MAX)
+  if ((i = env_search(env, key, lenk)) != 255)
   {
-    // found an existing env with the same name, overwrite
-    if (strncmp(str, env[i], pos) == 0)
-    {
-      free(env[i]);
-      env[i] = NULL;
-      break;
-    }
-    i++;
+    // found, erase old value
+    free(env[i]);
+    env[i] = NULL;
+    // if value is empty, then delete the env
+    if (lenv == 0)
+      return 0;
   }
-
-  // if it's an empty env variable 'x=' then delete the env
-  if (pos == len - 1)
-    return 0;
-
-  if (i >= ENV_MAX)
-    return 2; // too much env variables defined
-
-  if ((env[i] = malloc(len + 1)) == NULL)
-    return 3; // cannot allocate memory
-
-  // copy 
-  memcpy(env[i], str, len);
-  // end string with \0 just in case
-  env[i][len] = 0;
+  else
+  {
+    // find an empty hole in the list
+    for (i=0; i < ENV_MAX && env[i] != NULL; i++);
+    if (i == ENV_MAX)
+      return 2; // too much env variables
+  }
   
+  // Add value
+  if ((env[i] = malloc(lenk + lenv + 2)) == NULL)
+    return 3; // cannot allocate memory
+  p = env[i];
+  memcpy(p, key, lenk);
+  p += lenk;
+  *p = '=';
+  p++;
+  memcpy(p, value, lenv);
+  p += lenv;
+  *p = 0;
+
   return 0;
 }
 
-/*
-// add/update new environment variable
-bool env_add(struct dict_list **env, const char *key, const char *value)
-{
-	struct dict_list *last=NULL, *a=*env;
-	// go to the last key checking if there is already a matching key
-	while (a != NULL)
-	{
-		// Found a matching key, update value
-		if (strcmp(a->key,key) == 0)
-		{
-			free(a->value);
-			// If we cannot reserve memory, the value will be NULL
-			if ((a->value = malloc(strlen(value))) == NULL)
-				return false;
-			strcpy(a->value, value);
-			return true;
-		}
-		last = a;
-		a = (struct dict_list *) a->next;
-	}
-	if (((a = malloc(sizeof(struct dict_list))) == NULL) ||
-	    ((a->key = malloc(strlen(key))) == NULL) ||
-	    ((a->value = malloc(strlen(value))) == NULL))
-	{
-		free(a->key);
-		free(a);
-		return false;
-	}
-	a->next = NULL;
-	strcpy(a->key, key);
-	strcpy(a->value, value);
-	if (*env == NULL)
-		*env = a;
-	else
-		last->next = a;
-	return true;
-}
-
-// delete environment variable
-bool env_del(struct dict_list **env, const char *key)
-{
-	struct dict_list *last=NULL, *a=*env;
-	while (a != NULL)
-	{
-		if (strcmp(a->key, key) == 0)
-		{
-			if (last == NULL)
-				*env = (struct dict_list *) (*env)->next;
-			else
-				last->next = a->next;
-			free(a->key);
-			free(a->value);
-			free(a);
-			return true;
-		}
-		last = a;
-		a = (struct dict_list *) a->next;
-	}
-	return false;
-}
-
 // get a value from a environment variable
-char * env_nget(struct dict_list *env, const char *key, uint8_t n)
+char * env_get(char *env[], char *key)
 {
-	while (env != NULL)
-	{
-		// Found a matching key
-		if (strncmp(env->key,key,n) == 0)
-			return env->value;
-		env = (struct dict_list *) env->next;
-	}
-	return NULL;
+  return env_get_l(env, key, strlen(key));
 }
 
-char * env_get(struct dict_list *env, const char *key)
+// get a value from a environment variable (with string limits)
+char * env_get_l(char *env[], char *key, uint8_t lenk)
 {
-	return env_nget(env, key, 0);
+  uint8_t i;
+  char *p = NULL;
+ 
+  if (env == NULL)
+    return NULL; // no environment defined
+
+  if ((i = env_search(env, key, lenk)) != 255)
+    p = strchr(env[i], '=') + 1;
+
+  return p;
 }
 
+/*
 #ifdef DEBUG
 void env_test()
 {

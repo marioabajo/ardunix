@@ -14,15 +14,16 @@ struct dict_list
 #ifdef __cplusplus
 extern "C"{
 #endif
-/*  bool env_add(struct dict_list **env, const char *key, const char *value);
-  bool env_del(struct dict_list **env, const char *key);
-  char * env_get(struct dict_list *env, const char *key);
-  char * env_nget(struct dict_list *env, const char *key, uint8_t n);
+  uint8_t env_search(char *env[], char *key, uint8_t lenk);
+  uint8_t env_add(char *env[], char *key, char *value);
+  uint8_t env_add_l(char *env[], char *key, uint8_t lenk, char *value, uint8_t lenv);
+  char * env_get(char *env[], char *key);
+  char * env_get_l(char *env[], char *key, uint8_t lenk);
+/*
 #ifdef DEBUG
   void env_test();
 #endif
 */
-  bool env_add_str(char **env, char *str, uint8_t len, uint8_t pos);
 #ifdef __cplusplus
 }
 #endif

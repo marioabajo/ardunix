@@ -16,6 +16,14 @@
 #ifdef __AVR__
 #include <avr/pgmspace.h>
 
+  #ifdef __cplusplus
+  extern "C"{
+  #endif
+  
+  #ifdef __cplusplus
+  }
+  #endif
+
 /*
  * PC
  */

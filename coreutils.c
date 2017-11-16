@@ -34,7 +34,7 @@ void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 uint8_t main_ls(char *argv[])
 {
   DIR dir;
-  char *fn = "/";
+  char *fn = HOME;
   struct stat obj;
   struct dirent *entry;
   uint8_t ret = 0;
@@ -76,6 +76,61 @@ uint8_t main_ls(char *argv[])
   }
 
   return ret;
+}
+
+/*char * realpath(char *path, char *cwd)
+{
+  char *tmp;
+  uint8_t i = 0, j = 0;
+
+  if ((tmp = malloc(PATH_MAX)) == NULL)
+    return NULL; // not enought memory
+
+  snprintf_P(PATH_MAX, PSTR("%s/%s"), cwd, path);
+  
+  // TODO TODO
+  
+  return NULL;
+}*/
+
+uint8_t main_cd(char *argv[], char *env[])
+{
+/*  char *cwd, *named = NULL;
+  struct stat file;
+  DIR dir;
+  uint8_t ret = 0;
+
+  if (env == NULL)
+    return 1; // No environment defined
+
+  // go to home
+  if (argv[1] == NULL)
+  {
+    env_add(env, "CWD", HOME);
+    return 0;
+  }
+  // absolute path
+  else if (argv[1][0] == '/')
+    named = realpath(argv[1], NULL);
+  // relative path
+  else
+    if ((named = realpath(argv[1], env_get(env, "CWD"))) == NULL)
+      return 5; // invalid path
+
+  // check permissions and type
+  if (stat(named, &file))
+    ret = 2; // directory not found
+  if (!(file.st_mode & FS_EXEC))
+    ret = 3; // permission denied
+  if (!(file.st_mode & FS_DIR))
+    ret = 4; // not a directory
+  
+  if (!ret)
+    env_add(env, "CWD", named);
+  if (named != argv[1])
+    free(named);
+  return ret;*/
+  return 0;
 }
 
 // Print free ram
@@ -204,7 +259,10 @@ uint8_t main_debug(char *argv[])
   unsigned int HEAPSTART = (int) &__heap_start;
   unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
   uint8_t i = 1;
- 
+
+  if (argv[i] == NULL)
+    goto help;
+
   while (argv[i] != NULL)
   {
     if (argv[i][0] != '-' || argv[i][2] != 0)
@@ -234,6 +292,7 @@ uint8_t main_debug(char *argv[])
   return 0;
 error:
   printf_P(PSTR("Unknown param: \"%s\"\n"), argv[i]);
+help:
   printf_P(PSTR("Use -h to print help\n"));
   return 1;
 #else

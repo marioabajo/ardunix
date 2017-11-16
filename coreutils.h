@@ -7,6 +7,7 @@
 extern "C"{
 #endif
   uint8_t main_ls(char *argv[]);
+  uint8_t main_cd(char *argv[], char *env[]);
   uint8_t main_free (char *argv[]);
   uint8_t main_times (char *argv[]);
   uint8_t main_set(char *argv[], char *env[]);

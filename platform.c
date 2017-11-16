@@ -2,6 +2,8 @@
 
 #ifdef __AVR__
 
+
+
 #else
 
 void delay(long ms)
