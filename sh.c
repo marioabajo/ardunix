@@ -4,6 +4,19 @@
 #include <string.h>
 #include <stdlib.h>
 
+const char PROGMEM c[] = "!{};\n\r()dofiifinforcasedoneelifelseesacthenuntilwhile";
+const token PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, TK_PO, TK_PC, \
+                            TK_DO, TK_FI, TK_IF, TK_IN, TK_FOR, TK_CASE, TK_DONE, TK_ELIF, \
+                            TK_ELSE, TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
+// values grouped in three values: start, end, start_in_token_array
+const uint8_t PROGMEM d[] = {0, 8, 0, 8, 16, 8, 16, 19, 12, 19, 43, 13, 43, 53, 19}; 
+/*  token length:            \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
+    values:                  |  |  \-->start in ta array
+                             |  \--> limit in c array
+                             \--> start in c array 
+*/
+
+
 #define END_OF_BLOCK(a) (a.pos == a.limit)
 #define END_OF_PBLOCK(a) (a->pos == a->limit)
 
@@ -76,28 +89,17 @@ token str_to_token(block a)
 {
   char *t = a.p + a.pos;
   uint8_t i, start, limit, tpos;
-  const char PROGMEM c[] = "!{};\n\r()dofiifinforcasedoneelifelseesacthenuntilwhile";
-  const token PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, TK_PO, TK_PC, \
-                              TK_DO, TK_FI, TK_IF, TK_IN, TK_FOR, TK_CASE, TK_DONE, TK_ELIF, \
-                              TK_ELSE, TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
-  // values grouped in three values: start, end, start_in_token_array
-  PROGMEM uint8_t d[] = {0, 8, 0, 8, 16, 8, 16, 19, 12, 19, 43, 13, 43, 53, 19}; 
-  /*  token length:      \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
-      values:            |  |  \-->start in ta array
-                         |  \--> limit in c array
-                         \--> start in c array 
-  */
 
   if (a.len > 5 || a.len == 0)
     return FALSE;
 
-  start = d[(a.len * 3) - 3];
-  limit = d[(a.len * 3) - 2];
-  tpos = d[(a.len * 3) - 1];
+  start = pgm_read_byte(&d[(a.len * 3) - 3]);
+  limit = pgm_read_byte(&d[(a.len * 3) - 2]);
+  tpos  = pgm_read_byte(&d[(a.len * 3) - 1]);
   for (i = start; i < limit; i += a.len)
   {
     if (strncmp_P(t, &c[i], a.len) == 0)
-      return ta[tpos];
+      return pgm_read_byte(&ta[tpos]);
     tpos++;
   }
   return FALSE;
