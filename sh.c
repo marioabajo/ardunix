@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #define END_OF_BLOCK(a) (a.pos == a.limit)
+#define END_OF_PBLOCK(a) (a->pos == a->limit)
 
 uint8_t syntax_if(block *a);
 uint8_t eval_if(block a, char *env[]);
@@ -17,7 +18,7 @@ uint8_t is_char(unsigned char c)
 		return 1;
 	if (c >= 'A' && c <='Z')
 		return 2;
-	return 0;
+	return FALSE;
 }
 
 uint8_t is_number(unsigned char c)
@@ -73,97 +74,62 @@ uint8_t is_var_assign(char *t, size_t n)
 
 token str_to_token(block a)
 {
-  token tok = FALSE;
   char *t = a.p + a.pos;
+  uint8_t i, start, limit, tpos;
+  const char PROGMEM c[] = "!{};\n\r()dofiifinforcasedoneelifelseesacthenuntilwhile";
+  const token PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, TK_PO, TK_PC, \
+                              TK_DO, TK_FI, TK_IF, TK_IN, TK_FOR, TK_CASE, TK_DONE, TK_ELIF, \
+                              TK_ELSE, TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
+  // values grouped in three values: start, end, start_in_token_array
+  PROGMEM uint8_t d[] = {0, 8, 0, 8, 16, 8, 16, 19, 12, 19, 43, 13, 43, 53, 19}; 
+  /*  token length:      \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
+      values:            |  |  \-->start in ta array
+                         |  \--> limit in c array
+                         \--> start in c array 
+  */
 
-  // First, clasify token by the length of it, it's fast
-  switch (a.len)
+  if (a.len > 5 || a.len == 0)
+    return FALSE;
+
+  start = d[(a.len * 3) - 3];
+  limit = d[(a.len * 3) - 2];
+  tpos = d[(a.len * 3) - 1];
+  for (i = start; i < limit; i += a.len)
   {
-    case 1:
-      if (*t == '!')
-        tok = TK_EXCL;
-      else if (*t == '{')
-        tok = TK_BROP;
-      else if (*t == '}')
-        tok = TK_BRCL;
-      else if (*t == ';')
-        tok = TK_SC;
-      else if (*t == '\n')
-        tok = TK_NL;
-      else if (*t == '\r')
-        tok = TK_CR;
-      else if (*t == '(')
-        tok = TK_PO;
-      else if (*t == ')')
-        tok = TK_PC;
-      break;
-    case 2:
-      if (strncmp_P(t, PSTR("do"), 2) == 0)
-        tok = TK_DO;
-      else if (strncmp_P(t, PSTR("fi"), 2) == 0)
-        tok = TK_FI;
-      else if (strncmp_P(t, PSTR("if"), 2) == 0)
-        tok = TK_IF;
-      else if (strncmp_P(t, PSTR("in"), 2) == 0)
-        tok = TK_IN;
-      break;
-    case 3:
-      if (strncmp_P(t, PSTR("for"), 3) == 0)
-        tok = TK_FOR;
-      break;
-    case 4:
-      if (strncmp_P(t, PSTR("case"), 4) == 0)
-        tok = TK_CASE;
-      else if (strncmp_P(t, PSTR("done"), 4) == 0)
-        tok = TK_DONE;
-      else if (strncmp_P(t, PSTR("elif"), 4) == 0)
-        tok = TK_ELIF;
-      else if (strncmp_P(t, PSTR("else"), 4) == 0)
-        tok = TK_ELSE;
-      else if (strncmp_P(t, PSTR("esac"), 4) == 0)
-        tok = TK_ESAC;
-      else if (strncmp_P(t, PSTR("then"), 4) == 0)
-        tok = TK_THEN;
-      break;
-    case 5:
-      if (strncmp_P(t, PSTR("until"), 5) == 0)
-        tok = TK_UNTIL;
-      else if (strncmp_P(t, PSTR("while"), 5) == 0)
-        tok = TK_WHILE;
-      break;
+    if (strncmp_P(t, &c[i], a.len) == 0)
+      return ta[tpos];
+    tpos++;
   }
-
-  // token not recognized, should be a command
-  return tok;
+  return FALSE;
 }
 
-block get_string(block a)
+uint8_t get_string(block *a)
 {
   char *s;
   size_t pos;
   uint8_t par = 0;
   uint8_t _exit = 0;
 
-  s = a.p;
-  a.len = 0;
+  s = a->p;
+  a->len = 0;
 
   // remove begining spaces
-  while (!END_OF_BLOCK(a) && s[a.pos] == ' ')
-    a.pos++;
+  while (!END_OF_PBLOCK(a) && s[a->pos] == ' ')
+    a->pos++;
 
-  pos = a.pos;
+  pos = a->pos;
 
   // delimit the string, considering the quotes
   while (! _exit)
   {
     // check the limits
-    if (END_OF_BLOCK(a))
+    if (END_OF_PBLOCK(a))
     {
       // if we already have something, exit loop
-      if (a.len > 0)
+      if (a->len > 0)
         break;
       // we reached the end of the block without having found nothing, exit with error
-      return a;
+      return FALSE;
     }
 
     // take some chars specially
@@ -185,15 +151,15 @@ block get_string(block a)
     // if we found any of this chars, then finish the string
     if ((s[pos] == ' ' || s[pos] == ';' || s[pos] == '\n' || s[pos] == '\r') && par == 0)
     {
-      if (a.len == 0)
+      if (a->len == 0)
         _exit = 1;
       else
         break;
     }
-    a.len++;
+    a->len++;
     pos++;
   }
-  return a;
+  return TRUE;
 
 }
 
@@ -210,7 +176,7 @@ void extend_to_eol(block *a)
 
   do
   {
-    b = get_string(b);
+    get_string(&b);
     tok = str_to_token(b);
     if (tok == TK_NL || tok == TK_CR || tok == TK_SC)
       break;
@@ -278,7 +244,7 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
 
   do
 	{
-    a = get_string(a);
+    get_string(&a);
     if (END_OF_BLOCK(a))
       break;
 		tok = str_to_token(a);
@@ -375,7 +341,7 @@ uint8_t find_else_fi(block a, size_t *pos)
   // search for "if" "else" of "fi" until found or until end of block
   while (!END_OF_BLOCK(a) && found == 0)
   {
-    a = get_string(a);
+    get_string(&a);
     tok = str_to_token(a);
     switch(tok)
     {
@@ -417,16 +383,13 @@ uint8_t syntax_if(block *a)
   uint8_t error = 0;
   size_t pos;
 
-  b.p = a->p;
-  b.pos = a->pos;
-  b.len = a->len;
-  b.limit = a->limit;
+  memcpy(&b,a,sizeof(block));
 
   while (state < 8)
   {
     if (state != 4 && state != 6)
     {
-      b = get_string(b);
+      get_string(&b);
       if (state != 1)
         tok = str_to_token(b);
     }
@@ -484,87 +447,6 @@ uint8_t syntax_if(block *a)
   a->len = b.pos - a->pos;
 
   return 0;
-
-/*
-  // check if token
-  b = get_string(*a);
-  tok = str_to_token(b);
-  if (tok != TK_IF)
-  {
-    printf_P(PSTR("Error in char %d, if expected\n"), b.pos);
-    return 1;
-  }
-  b.pos += b.len;
-
-  // jump condition
-  b = get_string(b);
-  extend_to_eol(&b);
-  b.pos += b.len;
-
-  // check new line
-  b = get_string(b);
-  tok = str_to_token(b);
-  if (tok != TK_NL && tok != TK_CR && tok != TK_SC)
-  {
-    printf_P(PSTR("Error in char %d, new line expected\n"), b.pos);
-    return 1;
-  }
-  b.pos += b.len;
-
-  // check then token
-  b = get_string(b);
-  tok = str_to_token(b);
-  if (tok != TK_THEN)
-  {
-    printf_P(PSTR("Error in char %d, then expected\n"), b.pos);
-    return 1;
-  }
-  b.pos += b.len;
-
-  // jump then block
-  found = find_else_fi(b, &pos);
-  if (!found)
-  {
-    printf_P(PSTR("Error in char %d, fi expected\n"), b.pos);
-    return 1;
-  }
-  b.pos = pos;
-
-  // check else token
-  if (found == 2)
-  {
-    b = get_string(b);
-    tok = str_to_token(b);
-    if (tok != TK_ELSE)
-    {
-      printf_P(PSTR("Error in char %d, else expected\n"), b.pos);
-      return 1;
-    }
-    b.pos += b.len;
-
-    // jump else block
-    found = find_else_fi(b, &pos);
-    if (!found)
-    {
-      printf_P(PSTR("Error in char %d, fi expected\n"), b.pos);
-      return 1;
-    }
-    b.pos = pos;
-  }
-
-  // check fi token
-  b = get_string(b);
-  tok = str_to_token(b);
-  if (tok != TK_FI)
-  {
-    printf_P(PSTR("Error in char %d, fi expected\n"), b.pos);
-    return 1;
-  }
-  b.pos += b.len;
-
-  a->len = b.pos - a->pos;
-
-  return 0;*/
 }
 
 uint8_t eval_if(block a, char *env[])
@@ -578,7 +460,7 @@ uint8_t eval_if(block a, char *env[])
   while (state < 7)
   {
     if (state != 4 && state != 6)
-      a = get_string(a);
+      get_string(&a);
     else
       found = find_else_fi(a, &limit);
 
@@ -616,45 +498,6 @@ uint8_t eval_if(block a, char *env[])
   }
 
   return error;
-/*
-  // jump the if
-  a = get_string(a);
-  a.pos += a.len;
-
-  // get the condition
-  a = get_string(a);
-  extend_to_eol(&a);
-  cond = eval(a.p + a.pos, a.len, env);
-  a.pos += a.len;
-
-  // jump the new line/semi colon character
-  a = get_string(a);
-  a.pos += a.len;
-
-  // now we need the then
-  a = get_string(a);
-  a.pos += a.len;
-
-  // look for the "else" or "fi" token and save the block limit
-  found = find_else_fi(a, &limit);
-
-  // process the "then" part
-  if (!cond)
-    error = eval(a.p + a.pos, limit - a.pos, env);
-
-  // goto the end of the "then" section
-  a.pos = limit + a.len;
-
-  // if we have an "else" part
-  if (found == 2)
-  {
-    // find fi
-    found = find_else_fi(a, &limit);
-    if (cond)
-      error = eval(a.p + a.pos, limit - a.pos, env);
-  }
-
-  return error;*/
 }
 
 // get command from input

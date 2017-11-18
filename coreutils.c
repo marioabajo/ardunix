@@ -7,7 +7,8 @@
 
 void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 {
-  char c = 0;
+  char c = '?';
+  char r = '-', w = '-', x = '-';
 
   switch(f & FS_MASK_FILETYPE)
   {
@@ -24,10 +25,13 @@ void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
       c = 'c'; // TODO: Another case for each type of dev
   }
 
-  printf_P(PSTR("%c%c%c%c %4d %s\n"), c, (f & FS_READ) ? 'r' : '-'
-                                       , (f & FS_WRITE) ? 'w' : '-'
-                                       , (f & FS_EXEC) ? 'x' : '-'
-                                       , size, entry_name);
+  if (f & FS_READ)
+    r = 'r';
+  if (f & FS_WRITE)
+    w = 'w';
+  if (f & FS_EXEC)
+    x = 'x';
+  printf_P(PSTR("%c%c%c%c %4d %s\n"), c, r, w, x, size, entry_name);
 }
 
 // list files and directories

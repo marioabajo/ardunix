@@ -8,8 +8,8 @@
 
 uint8_t progfs_stat(const char *pathname, struct stat *buf)
 {
-    uint8_t i=0, ptr=0;
-    char actualname[PATH_MAX]="";
+    uint8_t i = 0, ptr = 0;
+    char actualname[PATH_MAX] = "";
     
     if (pathname == 0)
         return 1; //invalid filename
@@ -23,7 +23,6 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
             
             //DEBUGING: printf("DEBUG progfs_stat: ptr:%d i:%d actualname:%s\n",ptr,i,actualname);
             // compare it with the filename supplied, if coincide, we have a match
-            // TODO: a faster strncmp could be possible
             if (strncmp(pathname, actualname, PATH_MAX) == 0)
             {
                 buf->st_ino = i;
@@ -43,8 +42,8 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
                 {
                     if (ptr + 2 >= PATH_MAX)
                         return 1; // path too large
-                    actualname[ptr++]='/';
-                    actualname[ptr]=0;
+                    actualname[ptr++] = '/';
+                    actualname[ptr] = 0;
                 }
             }
         }
@@ -53,14 +52,14 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
         {
             // go back and delete the last element in the path
             ptr--;
-            while (ptr > 0 && actualname[ptr-1]!='/')
+            while (ptr > 0 && actualname[ptr-1] != '/')
                 ptr--;
-            actualname[ptr]=0;
+            actualname[ptr] = 0;
         }
     
         i++;
     }
-    while (ptr>0);
+    while (ptr > 0);
 
     return 255; // Not found
 }
@@ -97,7 +96,7 @@ uint8_t progfs_opendir(const char *path, DIR *d)
   d->dd_buf = file.st_ino;
   d->dd_loc = 0;
   
-  /* TODO: the following 5 lines repate +/- the same in other parts... consider a funciton*/
+  /* TODO: the following 5 lines repate +/- the same in other parts... consider a function*/
   e = &d->dd_ent;
   strncpy_P(e->d_name, ProgFs2[file.st_ino].name, FILENAME_MAX);
   e->flags = file.st_mode;
