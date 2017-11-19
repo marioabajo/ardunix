@@ -228,8 +228,14 @@ uint8_t str_to_argv(block a, char *dst, char *argv[], char *env[])
     argv[j] = NULL;
 
   return ret;
+}
 
-  return true;
+void init_block(block src, block *dst)
+{
+  dst->p = src.p + src.pos;
+  dst->pos = 0;
+  dst->len = 0;
+  dst->limit = src.len;
 }
 
 uint8_t eval(char *cmd, size_t limit, char *env[])
@@ -266,6 +272,7 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
         if ((error = syntax_if(&a)) > 0)
           break;
         // build the if block
+        //init_block(a, &b);
         b.p = a.p + a.pos;
         b.pos = 0;
         b.len = 0;
@@ -283,6 +290,7 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
       case FALSE:
         extend_to_eol(&a);
         // build the command block
+        //init_block(a, &b);
         b.p = a.p + a.pos;
         b.pos = 0;
         b.len = 0;
@@ -535,7 +543,7 @@ uint8_t getcmd(char buff[])
     // Check the buffer used
     if (buffp == ARGMAX)
     {
-      fprintf_P(stderr,PSTR("ERROR: Line too long, %d limit reached\n"), ARGMAX);
+      puts_P(PSTR("ERROR: Line too long, " STR(ARGMAX) " limit reached\n"));
       return false;
     }
   }
@@ -552,8 +560,13 @@ uint8_t main_sh(char *argv[], char *env[])
   // input line buffer
   char line[ARGMAX];
   size_t len;
-  uint8_t exit_flag=1;
-  uint8_t result, i;
+  uint8_t exit_flag = 1;
+  uint8_t result;
+  uint8_t delete_at_exit = 0;
+
+  if (argv[1] != NULL)
+    // TODO
+    printf_P(PSTR("TODO RUN: %s\n"), argv[1]);
 
   // add a environment if it doesn't exist
   if (env == NULL)
@@ -562,8 +575,8 @@ uint8_t main_sh(char *argv[], char *env[])
     if ((env = malloc(ENV_MAX * sizeof(char *))) == NULL)
       return 1; // cannot allocate memory
     // clean env
-    for (i=0; i< ENV_MAX; i++)
-      env[i] = NULL;
+    memset(env, 0, ENV_MAX * sizeof(char *));
+    delete_at_exit = 1;
   }
 
   // Set Current Working Directory if doesn't exists
@@ -585,6 +598,9 @@ uint8_t main_sh(char *argv[], char *env[])
 
   // TODO: Implement a decent exit mechanism
   } while(exit_flag);
+
+  if (delete_at_exit)
+    free(env);
 
   return 0;
 }

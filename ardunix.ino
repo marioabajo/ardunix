@@ -2,9 +2,6 @@
  * 
  */
 
-//#define CMD_SH_SIMPLE true
-
-#include "ardunix.h"
 
 /* ARDUNIX CONFIG PARAMETERS
  * ========================= */
@@ -12,6 +9,7 @@
 //#define CMD_LS false
 //#define CMD_CD false
 //#define CMD_SH false
+//#define CMD_SH_SIMPLE true
 //#define CMD_FREE false
 //#define CMD_TIMES false
 //#define CMD_SET false
@@ -21,6 +19,8 @@
 //#define CMD_ECHO false
 //#define CMD_DEBUG false
 //#define DEBUG 1
+
+#include "ardunix.h"
 
 // Add files (and content) to internal filesystem
 const char PROGMEM _etc_test[] = "test";

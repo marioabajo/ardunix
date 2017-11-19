@@ -6,6 +6,19 @@
  of FILENAME_MAX and can(will) do stack corruption 
  */
 
+struct dirent * copy_dirent(DIR *d, uint8_t inode)
+{
+  struct dirent *e;
+
+  e = &d->dd_ent;
+  strncpy_P(e->d_name, ProgFs2[inode].name, FILENAME_MAX);
+  e->flags = ProgFs2[inode].perm;
+  e->d_ino = inode;
+  e->size = ProgFs2[inode].size;
+
+  return e;
+}
+
 uint8_t progfs_stat(const char *pathname, struct stat *buf)
 {
     uint8_t i = 0, ptr = 0;
@@ -82,7 +95,6 @@ uint8_t progfs_fstat(FD *fd, struct stat *buf)
 uint8_t progfs_opendir(const char *path, DIR *d)
 {
   struct stat file;
-  struct dirent *e;
 
   // Stat the directory and check that it is a directory
   if (progfs_stat(path, &file) != 0 || (file.st_mode & FS_MASK_FILETYPE) != FS_DIR)
@@ -96,12 +108,7 @@ uint8_t progfs_opendir(const char *path, DIR *d)
   d->dd_buf = file.st_ino;
   d->dd_loc = 0;
   
-  /* TODO: the following 5 lines repate +/- the same in other parts... consider a function*/
-  e = &d->dd_ent;
-  strncpy_P(e->d_name, ProgFs2[file.st_ino].name, FILENAME_MAX);
-  e->flags = file.st_mode;
-  e->d_ino = file.st_ino;
-  e->size = ProgFs2[file.st_ino].size;
+  copy_dirent(d, file.st_ino);
 
   return 0;
 }
@@ -111,7 +118,7 @@ struct dirent *progfs_readdir(DIR *dirp)
   uint8_t level = 0, i;
   struct dirent *e;
 
-  // if it's the root directory, we wan't to list whats inside it, so we need this litle trick
+  // if it's the root directory, we want to list whats inside it, so we need this litle trick
   if (dirp->dd_loc == 0)
       dirp->dd_loc++;
  
@@ -122,27 +129,18 @@ struct dirent *progfs_readdir(DIR *dirp)
       return NULL;
 
   // Read entry
-  e = &dirp->dd_ent;
-  strncpy_P(e->d_name, ProgFs2[i].name, FILENAME_MAX);
-  e->flags = ProgFs2[i].perm;
-  e->d_ino = i;
-  e->size = ProgFs2[i].size;
+  e = copy_dirent(dirp, i);
 
   // Point to next entry, but check first if its a directory and bypass the contents
-  if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
+  do
   {
-      do
-      {
-          if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
-              level++;
-          else if (ProgFs2[i].name == 0)
-              level--;
-          dirp->dd_loc++;
-          i++;
-      } while (level > 0);
-  }
-  else
-    dirp->dd_loc++;
+      if ((ProgFs2[i].perm & FS_MASK_FILETYPE) == FS_DIR)
+          level++;
+      else if (ProgFs2[i].name == 0)
+          level--;
+      dirp->dd_loc++;
+      i++;
+  } while (level > 0);
 
   return e;
 }

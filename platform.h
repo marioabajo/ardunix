@@ -52,6 +52,7 @@
   #define fprintf_P fprintf
   #define printf_P printf
   #define snprintf_P snprintf
+  #define puts_P puts
 #endif
 
 #endif

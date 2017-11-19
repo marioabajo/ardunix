@@ -207,7 +207,7 @@ uint8_t main_cat(char *argv[])
     return 1;
 
   while (read(&fd, &c, 1) != 0)
-    printf_P(PSTR("%c"),c);
+    putchar(c);
 
   return 0;
 }

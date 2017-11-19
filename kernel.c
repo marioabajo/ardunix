@@ -77,8 +77,9 @@ uint8_t execve(const char *argv[], char *envp[])
   struct stat file;
   struct statvfs fs;
   FD fd;
-  char header[3] = {0, 0, 0};
+  char header[PATH_MAX];
   char *fullfilename;
+  uint8_t i;
 
   if (argv == NULL || argv[0] == NULL)
     return 1; // filename invalid
@@ -117,11 +118,24 @@ uint8_t execve(const char *argv[], char *envp[])
     return 6; // kernel error, filesystem not found!?
 
   // Check if its a script
-  read(&fd, header, 2);
+  read(&fd, header, PATH_MAX);
   if (header[0] == '#' && header[1] == '!')
   {
-    // TODO: call the interpreter
-    printf_P(PSTR("ERROR: not implemented\n"));
+    // modify argv, so put first the interpreter, and second this script filename
+    argv[1] = argv[0];
+    argv[2] = NULL;
+    argv[0] = &header[2];
+    // end the interpreter string with a 0
+    for (i=2; i < PATH_MAX; i++)
+    {
+      if (header[i] == ' ' || header[i] == '\r' || header[i] == '\n')
+      {
+          header[i] = 0;
+          break;
+      }
+    }
+    // call the interpreter
+    execve(argv, envp);
     return 0; // ok
   }
 

@@ -12,7 +12,8 @@
 #define PATH "/bin" // fixed path
 #define HOME "/"    // fixed home
 
-
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 //#define DEBUG 1
 
 
