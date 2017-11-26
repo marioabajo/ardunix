@@ -79,8 +79,10 @@ void loop()
 int main(void)
 #endif
 {
+  uint8_t ret;
+  
   // Show welcome message
-  execl("/bin/cat", "/etc/issue");
+  execl("/bin/cat", "/etc/issue", 0);
 
 #ifdef DEBUG
   printf_P(PSTR("execve: %d\n"), execl("bin"));
@@ -91,10 +93,10 @@ int main(void)
   printf_P(PSTR("execve: %d\n"), execl("/etc/script"));  
 #endif
 
-  execl("/bin/sh");
+  ret = execl("/bin/sh", 0);
   //main_sh(NULL, NULL);
   
-  printf_P(PSTR("Init process exited, waiting 10 seconds to restart\n"));
+  printf_P(PSTR("Init process exited(%d), waiting 10 seconds to restart\n"), ret);
   delay(10000);
 }
   

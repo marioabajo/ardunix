@@ -11,7 +11,7 @@ typedef struct progfsentry {
     uint16_t size;
 } PFS2;
 
-extern const PFS2 ProgFs2[];
+extern const PFS2 PROGMEM ProgFs2[];
 
 #ifdef __cplusplus
 extern "C" {

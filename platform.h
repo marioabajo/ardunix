@@ -53,6 +53,7 @@
   #define printf_P printf
   #define snprintf_P snprintf
   #define puts_P puts
+  #define memcpy_P memcpy
 #endif
 
 #endif

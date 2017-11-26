@@ -53,12 +53,8 @@ uint8_t execl(const char *argv, ...)
   
   va_start(va, argv);
 
-  if (i < NCARGS)
-  {
-    p = va_arg(va, char *);
-    if (*p != 0)
-      arglist[i++] = p;
-  }
+  while (i < NCARGS && (p = va_arg(va, char *)) != NULL)
+    arglist[i++] = p;
     
   va_end(va);
 
@@ -142,8 +138,8 @@ uint8_t execve(const char *argv[], char *envp[])
   // Try to execute dircetly ONLY if it's in PROGFS filesystem (internal flash)
   if (fs.vfs_fstype == FS_TYPE_PROGFS)
   {
-      //return ((uint8_t (*)(uint8_t argc, char *argv[], char *envp[])) pgm_read_ptr(&(ProgFs2[file.st_ino].ptr)))(argc, argv2, envp);
-      return ((uint8_t (*)(const char *argv[], char *envp[])) (ProgFs2[file.st_ino].ptr))(argv, envp);
+      return ((uint8_t (*)(const char *argv[], char *envp[])) pgm_read_ptr(&(ProgFs2[file.st_ino].ptr)))(argv, envp);
+      //return ((uint8_t (*)(const char *argv[], char *envp[])) (ProgFs2[file.st_ino].ptr))(argv, envp);
       //DEBUG: printf("debug: %s offset:%x\n", filename,pgm_read_ptr(&(file.st_ino)));
       //return 0; // ok
   }
