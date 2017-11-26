@@ -1,13 +1,15 @@
 # ardunix
 
-A shell prototype for arduino for extremely low memory devices (like arduinos with 2kb of ram). It can't be posix compliant in any way, but i try to make it familiar in some sense.
+A shell prototype for arduino (or other extremely low memory devices). It can't be posix compliant in any way, but i try to make it familiar in some sense.
 Objectives for v.1:
 
 - Low memory foot print at start (below 512 bytes of ram, and 9kb of flash)
-- Shell with variables, very basic control flow (for, while, if) and calls
+- Shell with variables, very basic control flow (for, while, if) and functions
 - Simple filesystem in flash (PROGMEM) and another one for eeprom (RW)
-- Simple interface with the shell (using read, write calls)
-- Support for automatically run commands at boot
+- Small and basic set of programs (ls, cat, echo, etc...)
+- Simple interface of the shell with lcd's, serial port, etc... (through read/write calls)
+- Support for scripts
+- Support for boot scripts
 
 ## Commands
 
@@ -30,6 +32,8 @@ Objectives for v.1:
     Execute a file, with its environment
 - exec
     The same as execve but without environment
+- execl
+    Variable argument list exec (you must end the list with a 0 or NULL)
 
 ### fs
 

@@ -68,13 +68,12 @@ uint8_t exec(const char *argv[])
   return execve(argv, NULL);
 }
 
-uint8_t execve(const char *argv[], char *envp[])
+// NOTE: force noinline in order to save stack memory
+uint8_t __attribute__((noinline)) analize_file(const char *argv[], struct stat *file, struct statvfs *fs, uint8_t *script)
 {
-  struct stat file;
-  struct statvfs fs;
-  FD fd;
   char header[PATH_MAX];
   char *fullfilename;
+  FD fd;
   uint8_t i;
 
   if (argv == NULL || argv[0] == NULL)
@@ -105,12 +104,12 @@ uint8_t execve(const char *argv[], char *envp[])
   }
 
   // and has the correct permissions 
-  fstat(&fd, &file);
-  if (!(file.st_mode & FS_EXEC))
+  fstat(&fd, file);
+  if (!(file->st_mode & FS_EXEC))
     return 5; // bad permissions
 
   // get the filesystem type of the filesystem of this file
-  if (fstatvfs(&fd, &fs) != 0)
+  if (fstatvfs(&fd, fs) != 0)
     return 6; // kernel error, filesystem not found!?
 
   // Check if its a script
@@ -130,10 +129,27 @@ uint8_t execve(const char *argv[], char *envp[])
           break;
       }
     }
-    // call the interpreter
-    execve(argv, envp);
+    // it's a script, call the interpreter
+    *script = 1;
     return 0; // ok
   }
+
+  return 0;
+  
+}
+
+uint8_t execve(const char *argv[], char *envp[])
+{
+  struct stat file;
+  struct statvfs fs;
+  uint8_t ret, script = 0;
+
+  ret = analize_file(argv, &file, &fs, &script);
+  if (ret)
+    return ret;
+  if (script)
+    // call the interpreter
+    return execve(argv, envp);
 
   // Try to execute dircetly ONLY if it's in PROGFS filesystem (internal flash)
   if (fs.vfs_fstype == FS_TYPE_PROGFS)
