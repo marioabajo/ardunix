@@ -1,74 +1,151 @@
-#include "sh.h"
-#include "kernel.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "sh.h"
+#include "kernel.h"
+#include "env.h"
+
+// Data types
+
+struct block
+{
+  char *p;
+  size_t pos;
+  size_t len;
+  size_t limit;
+};
+typedef struct block block;
+typedef char token;
+
+// Some usefull defines
+
+#define TK_EXCL  1  // !
+#define TK_BROP  2  // {
+#define TK_BRCL  3  // }
+#define TK_CASE  4  // case
+#define TK_DO    5  // do
+#define TK_DONE  6  // done
+#define TK_ELIF  7  // elif
+#define TK_ELSE  8  // else
+#define TK_ESAC  9  // esac
+#define TK_FI    10 // fi
+#define TK_FOR   11 // for
+#define TK_IF    12 // if
+#define TK_IN    13 // in
+#define TK_THEN  14 // then
+#define TK_UNTIL 15 // until
+#define TK_WHILE 16 // while
+#define TK_NL    17 // \n
+#define TK_CR    18 // \r
+#define TK_SC    19 // ;
+#define TK_PO    20 // (
+#define TK_PC    21 // )
+
+#define END_OF_BLOCK(a) (a.pos == a.limit)
+#define END_OF_PBLOCK(a) (a->pos == a->limit)
+
+// Arrays with the shell tokens, values and other info
 
 const char PROGMEM c[] = "!{};\n\r()dofiifinforcasedoneelifelseesacthenuntilwhile";
 const token PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, TK_PO, TK_PC, \
                             TK_DO, TK_FI, TK_IF, TK_IN, TK_FOR, TK_CASE, TK_DONE, TK_ELIF, \
                             TK_ELSE, TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
 // values grouped in three values: start, end, start_in_token_array
-const uint8_t PROGMEM d[] = {0, 8, 0, 8, 16, 8, 16, 19, 12, 19, 43, 13, 43, 53, 19}; 
-/*  token length:            \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
+const uint8_t PROGMEM d[] = {0, 8, 0, 8, 16, 8, 16, 19, 12, 19, 43, 13, 43, 53, 19};
+/*  token string length:     \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
     values:                  |  |  \-->start in ta array
                              |  \--> limit in c array
                              \--> start in c array 
 */
 
-
-#define END_OF_BLOCK(a) (a.pos == a.limit)
-#define END_OF_PBLOCK(a) (a->pos == a->limit)
+// Private function prototypes
 
 uint8_t syntax_if(block *a);
 uint8_t eval_if(block a, char *env[]);
 uint8_t eval_command(block a, char *env[]);
 
 // Functions
-uint8_t is_char(unsigned char c)
+
+uint8_t is_char(char c)
+/* Check if a byte is a charater, distinguish between upper and lower case
+ *  
+ * Returns: 0 -> is not a char
+ *          1 -> char lowercase
+ *          2 -> char uppercase
+ */
 {
 	if (c >= 'a' && c <='z')
-		return 1;
+		return true;
 	if (c >= 'A' && c <='Z')
 		return 2;
-	return FALSE;
+	return false;
 }
 
-uint8_t is_number(unsigned char c)
+uint8_t is_number(char c)
+/* Check if a byte is a number
+ * 
+ * Returns: 0 -> not a number
+ *          1 -> it's a number
+ */
 {
 	if (c >= '0' && c<='9')
-		return TRUE;
-	return FALSE;
+		return true;
+	return false;
 }
 
 uint8_t is_varname_ok(char *t, size_t n)
+/* Check if a string forms a valid variable name or not.
+ * This function checks only the name, the "$" character is not included
+ * 
+ * Input: string, string lenght
+ * Returns: 0 -> not valid
+ *          1 -> valid
+ *          2 -> special variable (builtins)
+ */
 {
-	size_t i=0;
+	size_t i = 0;
 
-	if (! (is_char(t[i]) || t[i] == '_'))
-		return FALSE;
+  // empty var names are not welcome
+  if (n == 0)
+    return false;
 
-	while (i < n && t[i] != '\0')
+  // Check for special variables (1 byte length)
+  if ((n == 1) && (t[0] == '?' || t[0] == '$'))
+    return 2;
+
+  // A variable should contain just characters, numbers 
+  // (but not start with one) and underscores
+	while (i < n)
 	{
-		if (! (is_char(t[i]) || is_number(t[i]) || t[i] == '_'))
-			return FALSE;
+		if (! (is_char(t[i]) || (is_number(t[i]) && i) || t[i] == '_'))
+			return false;
 		i++;
 	}
-	return TRUE;
+	return true;
 }
 
 uint8_t is_var(char *t, size_t n)
+/* Check if a string is a variable (including the starting "$")
+ * 
+ * Input: string, string length
+ * Returns: 1 -> It's a valid variable name
+ *          2 -> it's not a valid variable name
+ */
 {
-  if (n < 2)
-    return FALSE;
-    
-  if (t[0] == '$' && is_varname_ok(&t[1], n - 1))
-    return TRUE;
+  if (n > 1 && t[0] == '$' && is_varname_ok(t + 1, n - 1))
+    return true;
 
-  return FALSE;
+  return false;
 }
 
 uint8_t is_var_assign(char *t, size_t n)
+/* Check if a string is a variable assignment (eg.: abc=3)
+ * Finds the position of the '=' character and returns it
+ * 
+ * Input: string, string length
+ * Returns: 0 -> is not a variable assignment
+ *          >0 -> position of the '=' character
+ */
 {
   uint8_t i = 1;
   
@@ -80,37 +157,55 @@ uint8_t is_var_assign(char *t, size_t n)
     i++;
   }
 
+  // If we didn't reach the end of the string, we must have found it
   if (i < n)
     return i;
-  return FALSE;
+  return false;
 }
 
 token str_to_token(block a)
+/* Given a block (a substring inside a string), return the token value or 0
+ * if it's not a valid token
+ * 
+ * Input: a block structure
+ * Return: 0 -> invalid token
+ *         >0 -> token number
+ */
 {
   char *t = a.p + a.pos;
   uint8_t i, start, limit, tpos;
 
+  // strings with no lenght or greater than 5 cannot be valid tokens
   if (a.len > 5 || a.len == 0)
-    return FALSE;
+    return false;
 
   start = pgm_read_byte(&d[(a.len * 3) - 3]);
   limit = pgm_read_byte(&d[(a.len * 3) - 2]);
   tpos  = pgm_read_byte(&d[(a.len * 3) - 1]);
+  // compare the string with every token of the same lenght
   for (i = start; i < limit; i += a.len)
   {
-    if (strncmp_P(t, &c[i], a.len) == 0)
-      return pgm_read_byte(&ta[tpos]);
+    // if found, return token
+    if (strncmp_P((const char *)t, &c[i], a.len) == 0)
+      return pgm_read_byte((void *) &ta[tpos]);
     tpos++;
   }
-  return FALSE;
+  return false;
 }
 
 uint8_t get_string(block *a)
+/* Important function that recognizes, inside a block (a string), the next word 
+ * (separated by spaces) or substring (taking into account "" or '')
+ * 
+ * Input: block
+ * Returns: block with modified pos and len fields
+ *          0 -> could not select any more words/substring
+ *          1 -> word/substring selected
+ */
 {
   char *s;
   size_t pos;
   uint8_t par = 0;
-  uint8_t _exit = 0;
 
   s = a->p;
   a->len = 0;
@@ -122,19 +217,9 @@ uint8_t get_string(block *a)
   pos = a->pos;
 
   // delimit the string, considering the quotes
-  while (! _exit)
+  while (!END_OF_PBLOCK(a))
   {
-    // check the limits
-    if (END_OF_PBLOCK(a))
-    {
-      // if we already have something, exit loop
-      if (a->len > 0)
-        break;
-      // we reached the end of the block without having found nothing, exit with error
-      return FALSE;
-    }
-
-    // take some chars specially
+    // take quotes into account, when we found one, continue until find the pair
     switch (s[pos])
     {
       case '\"':
@@ -149,33 +234,50 @@ uint8_t get_string(block *a)
         else if (par == 2)
           par = 0;
         break;
+      case ' ':
+      case ';':
+      case '\n':
+      case '\r':
+        // if we found any of this chars, then finish the string
+        if (par == 0)
+        {
+          if (a->len == 0)
+            a->len++;
+          // exit loop
+          goto _exit;
+        }
     }
-    // if we found any of this chars, then finish the string
-    if ((s[pos] == ' ' || s[pos] == ';' || s[pos] == '\n' || s[pos] == '\r') && par == 0)
-    {
-      if (a->len == 0)
-        _exit = 1;
-      else
-        break;
-    }
+
     a->len++;
     pos++;
   }
-  return TRUE;
+
+_exit:
+  // if we got someting, great!
+  if (a->len > 0)
+    return true;
+  return false;
 
 }
 
 void extend_to_eol(block *a)
-// Extend a string to \n or ; characters found
+/* Given a block with a substring selected, extend the selection until an end of
+ * line is found.
+ * 
+ * Input: block
+ * Returns: Modify block length
+ */
 {
   token tok;
   block b;
 
+  // init a new block with data
   b.p = a->p;
   b.pos = a->pos + a->len;
   b.len = 0;
   b.limit = a->limit;
 
+  // loop until a valid token is found (\n, \r, ;)
   do
   {
     get_string(&b);
@@ -184,46 +286,49 @@ void extend_to_eol(block *a)
       break;
     b.pos += b.len;
   } while (!END_OF_BLOCK(b));
+
+  // adjust the length
   a->len = b.pos - a->pos;
 }
 
 uint8_t str_to_argv(block a, char *dst, char *argv[], char *env[])
 {
-  size_t i = 0, j = 0, ret = 0;
-  char p;
+  size_t i = 0;
+  uint8_t ret = 0, len, j = 1;
 
-  while (true)
+  argv[0] = dst;
+
+  // first, copy the string and separate args
+  while (!(ret || END_OF_BLOCK(a)))
   {
+    // TODO: need to thread " " and ' '
+    if (a.p[a.pos] == ' ')
+    {
+      dst[i] = 0;
+      // start pointing to the new arg
+      argv[j++] = dst + i + 1;
+    }
+    else
+      dst[i] = a.p[a.pos];
+    i++;
+    a.pos++;
     if (i >= ARGMAX)
       ret = 1; // line too long
     if (j >= NCARGS)
       ret = 2; // too many args
-    if (ret || END_OF_BLOCK(a))
-      break;
-
-    p = a.p[a.pos];
-    if (p == ' ')
-    {
-      dst[i] = 0;
-      a.len = 0;
-    }
-    else
-    {
-      if (a.len == 0)
-      {
-        argv[j] = dst + i;
-        j++;
-      }
-      dst[i] = p;
-      a.len++;
-    }
-    i++;
-    a.pos++;
   }
 
-  if (a.len > 0)
+  if (!ret)
     dst[i] = 0;
 
+  // check if any arg is a variable and substitute
+  for (i = 0; i<j; i++)
+  {
+    len = strlen(argv[i]);
+    if (is_var(argv[i], len))
+      argv[i] = env_get_l(env, argv[i] + 1, len - 1);
+  }
+  
   for (; j < NCARGS; j++)
     argv[j] = NULL;
 
@@ -287,7 +392,7 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
 #endif
 
       // a simple command followed by parameters until '\n' or ';'
-      case FALSE:
+      case false:
         extend_to_eol(&a);
         // build the command block
         //init_block(a, &b);
@@ -316,7 +421,7 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
 
 uint8_t eval_command(block a, char *env[])
 {
-  unsigned char error = 0;
+  char error = 0;
   char str[ARGMAX];
   char *argv[NCARGS];
   uint8_t pos;
@@ -324,13 +429,11 @@ uint8_t eval_command(block a, char *env[])
   // Check if is a variable assigment
   if ((pos = is_var_assign(a.p, a.limit)) != false)
   {
-    if (!is_varname_ok(a.p, pos - 1))
+    if (!is_varname_ok(a.p, pos))
       return 1;
     //return env_add_str(env, *cmd, *len, pos);
     return env_add_l(env, a.p, pos, a.p + pos + 1, a.limit - pos - 1);
   }
-
-  //TODO: check if there is a env var here
 
   // Discard empty commands
   if (a.p[0] == 0)

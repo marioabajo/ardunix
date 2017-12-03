@@ -9,7 +9,7 @@
 #define ENV_MAX 16  // max number of environment variables
 #define IFS ' '     // inter field separator
 // TODO: just one path at this moment
-#define PATH "/bin" // fixed path
+#define PATH /bin   // fixed path
 #define HOME "/"    // fixed home
 
 #define STR_HELPER(x) #x

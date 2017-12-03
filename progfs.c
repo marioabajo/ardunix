@@ -1,10 +1,6 @@
-//#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "progfs.h"
-/* Warning: be careful when including stdio.h because it has the first definition
- of FILENAME_MAX and can(will) do stack corruption 
- */
 
 struct dirent * copy_dirent(DIR *d, uint8_t inode)
 {

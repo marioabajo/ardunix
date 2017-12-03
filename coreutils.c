@@ -1,4 +1,6 @@
 #include "coreutils.h"
+#include "kernel.h"
+#include "fs.h"
 #include <stdio.h>
 #include <string.h>
 #ifdef __AVR__
@@ -283,6 +285,9 @@ uint8_t main_debug(char *argv[])
       case 's':
         msize = RAMEND - (uint16_t) &marker + 1;
         debug_dump((uint16_t) &marker, (void*) &marker, msize);
+        /* kind of backtrace, but doesn't work as expected 
+        for (i=0; i<2; i++)
+          printf_P(PSTR("0x%x\n"), __builtin_return_address(i));*/
         break;
       case 'H':
         msize = HEAPEND - HEAPSTART;

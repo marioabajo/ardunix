@@ -1,7 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "kernel.h"
+#include "platform.h"
 
 #ifdef __cplusplus
 extern "C"{

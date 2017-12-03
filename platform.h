@@ -7,6 +7,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+/* stdint defines FILENAME_MAX with 4096 by default in most architectures, 
+ * we need to redefine it to our value no avoid stack corruption
+ */
+#undef FILENAME_MAX
 #include "config.h"
 
 /*

@@ -7,7 +7,7 @@
  * ========================= */
 
 //#define CMD_LS false
-//#define CMD_CD false
+#define CMD_CD false
 //#define CMD_SH false
 //#define CMD_SH_SIMPLE true
 //#define CMD_FREE false
@@ -72,6 +72,7 @@ void setup()
     Serial.begin(115200);
     //while (!Serial);
     printf_P(PSTR("Booting...\n"));
+    //printf_P(PSTR("Serial buffer: %d %x"), SERIAL_BUFFER_SIZE, _rx_buffer);
 }
 
 void loop()
@@ -82,16 +83,9 @@ int main(void)
   uint8_t ret;
   
   // Show welcome message
-  execl("/bin/cat", "/etc/issue", 0);
-
-#ifdef DEBUG
-  printf_P(PSTR("execve: %d\n"), execl("bin"));
-  printf_P(PSTR("execve: %d\n"), execl("/bin"));
-  printf_P(PSTR("execve: %d\n"), execl("/bin/ls"));
-  printf_P(PSTR("execve: %d\n"), execl("/bin/lso"));
-  printf_P(PSTR("execve: %d\n"), execl("/etc/motd"));
-  printf_P(PSTR("execve: %d\n"), execl("/etc/script"));  
-#endif
+  execl_P(PSTR("/bin/cat"), PSTR("/etc/issue"), 0);
+  //execl("/bin/debug", "-s", 0);
+  //execl("free", 0);
 
   ret = execl("/bin/sh", 0);
   //main_sh(NULL, NULL);

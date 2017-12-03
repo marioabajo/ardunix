@@ -2,14 +2,12 @@
 #define KERNEL_H
 
 #include "platform.h"
-#include "fs.h"
-#include "env.h"
 
 #ifdef __cplusplus
 extern "C"{
 #endif
   uint8_t execl(const char *argv, ...);
-  //uint8_t execle(const char *argv, ...);
+  uint8_t execl_P(const PROGMEM char *argv, ...);
   uint8_t exec(const char *argv[]);
   uint8_t execve(const char *argv[], char *env[]);
 #ifdef __cplusplus

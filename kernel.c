@@ -1,44 +1,53 @@
 #include "kernel.h"
 #include "progfs.h"
+#include "fs.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
 
 
-/*uint8_t execle(const char *argv, ...)
+uint8_t execl_P(const PROGMEM char *argv, ...)
 {
-  char *arglist[NCARGS], *p;
-  char **env = NULL;
-  uint8_t i = 0;
+  char *arglist[NCARGS], *p, *str;
+  uint8_t len, ret = 0;
+  int8_t i = 0;
   va_list va;
 
   if(argv == NULL)
     return 0;
 
-  arglist[i++] = (char *) argv;
-  
+  p = (char *) argv;
+
   va_start(va, argv);
 
-  if (i < NCARGS)
+  do
   {
-    p = va_arg(va, char *);
-    if (*p != 0)
-      arglist[i++] = p;
-  }
-  else if (i == NCARGS)
-    env = va_arg(va, char **);
-    
+    len = strlen_P(p);
+    if ((str = malloc(len + 1)) == NULL)
+    {
+      ret = 6;
+      goto finish;
+    }
+    strncpy_P(str, p, len);
+    str[len] = 0;
+    arglist[i++] = str;    
+  }while (i < NCARGS && (p = va_arg(va, char *)) != NULL);
+
   va_end(va);
 
-  // if envp is NULL then, the last recorded value in arglist in the env
-  if (env == NULL)
-    env = (char **) arglist[--i];
-
   arglist[i] = NULL;
-  
-  return execve((const char **) arglist, env);
-}*/
+
+  ret = execve((const char **)arglist, NULL);
+
+finish:
+  // free the allocated blocks
+  for (i--; i>=0; i--)
+    free(arglist[i]);
+
+  return ret;
+
+}
 
 uint8_t execl(const char *argv, ...)
 {
@@ -71,61 +80,50 @@ uint8_t exec(const char *argv[])
 // NOTE: force noinline in order to save stack memory
 uint8_t __attribute__((noinline)) analize_file(const char *argv[], struct stat *file, struct statvfs *fs, uint8_t *script)
 {
-  char header[PATH_MAX];
-  char *fullfilename;
+  char aux[PATH_MAX];
   FD fd;
   uint8_t i;
 
   if (argv == NULL || argv[0] == NULL)
     return 1; // filename invalid
 
-  fullfilename = (char *) argv[0];
-
   // If the filename looks like a full path, try to open it directly
-  if (fullfilename[0] == '/')
+  if (argv[0][0] == '/')
   {
-    if (open(fullfilename, 0, &fd) != 0)
+    if (open(argv[0], 0, &fd) != 0)
       return 2; // could not open file
   }
   else
   // If not, try to prepend the PATH variable to the filename and try to open then 
   {
-    // TODO: any method to avoid malloc? and a static memory allocation waste?
-    //       should we try strncat instead?
-    if ((fullfilename = malloc(PATH_MAX)) == NULL)
-      return 3; // not enought memory
-    snprintf_P(fullfilename, PATH_MAX, PSTR("%s/%s"), PATH, argv[0]);
-    if (open(fullfilename, 0, &fd) != 0)
-    {
-      free(fullfilename);
-      return 4; // file not found
-    }
-    free(fullfilename);
+    snprintf_P(aux, PATH_MAX, PSTR(STR(PATH) "/%s"), argv[0]);
+    if (open(aux, 0, &fd) != 0)
+      return 3; // file not found
   }
 
   // and has the correct permissions 
   fstat(&fd, file);
   if (!(file->st_mode & FS_EXEC))
-    return 5; // bad permissions
+    return 4; // bad permissions
 
   // get the filesystem type of the filesystem of this file
   if (fstatvfs(&fd, fs) != 0)
-    return 6; // kernel error, filesystem not found!?
+    return 5; // kernel error, filesystem not found!?
 
   // Check if its a script
-  read(&fd, header, PATH_MAX);
-  if (header[0] == '#' && header[1] == '!')
+  read(&fd, aux, PATH_MAX);
+  if (aux[0] == '#' && aux[1] == '!')
   {
     // modify argv, so put first the interpreter, and second this script filename
     argv[1] = argv[0];
     argv[2] = NULL;
-    argv[0] = &header[2];
+    argv[0] = &aux[2];
     // end the interpreter string with a 0
     for (i=2; i < PATH_MAX; i++)
     {
-      if (header[i] == ' ' || header[i] == '\r' || header[i] == '\n')
+      if (aux[i] == ' ' || aux[i] == '\r' || aux[i] == '\n')
       {
-          header[i] = 0;
+          aux[i] = 0;
           break;
       }
     }

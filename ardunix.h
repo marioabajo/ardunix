@@ -3,81 +3,137 @@
 
 #include "progfs.h"
 #include "sh.h"
+#include "coreutils.h"
+#include "kernel.h"
 #include <stdio.h>
 
-#define PROGFS_ENTRY(PATHNAME, FUNC, FLAGS, SIZE) {PATHNAME, (void *)FUNC, FLAGS, SIZE},
-#define ARDUNIX_VER "0.5 beta"
-#define ARDUNIX_DATE "2017/10/30"
+#define ARDUNIX_VER "0.5"
+#define ARDUNIX_DATE "2017/12/03"
 
 // sh.h
-#if !defined CMD_SH || CMD_SH == true
+#if !defined CMD_SH
+#define CMD_SH true
+#endif
+#if CMD_SH == true
 const char PROGMEM _bin_sh[] = "sh";
 #define PROGFS_ENT__BIN_SH    PROGFS_ENTRY(_bin_sh, main_sh, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_SH
 #endif
 
 #define PROGFS_ENT_SH  PROGFS_ENT__BIN_SH
 
 // coreutils.h
-#if !defined CMD_LS || CMD_LS == true
+#if !defined CMD_LS
+#define CMD_LS true
+#endif
+#if CMD_LS == true
 const char PROGMEM _bin_ls[] = "ls";
-#define PROGFS_ENT__BIN_LS    {_bin_ls,         (void *)main_ls,    FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_LS    PROGFS_ENTRY(_bin_ls, main_ls, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_LS
 #endif
 
-#if !defined CMD_CD || CMD_CD == true
+#if !defined CMD_CD
+#define CMD_CD true
+#endif
+#if CMD_CD == true
 const char PROGMEM _bin_cd[] = "cd";
-#define PROGFS_ENT__BIN_CD    {_bin_cd,         (void *)main_cd,    FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_CD    PROGFS_ENTRY(_bin_cd, main_cd, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_CD
 #endif
 
-#if !defined CMD_FREE || CMD_FREE == true
+#if !defined CMD_FREE
+#define CMD_FREE true
+#endif
+#if CMD_FREE == true
 const char PROGMEM _bin_free[] = "free";
-#define PROGFS_ENT__BIN_FREE  {_bin_free,       (void *)main_free,  FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_FREE  PROGFS_ENTRY(_bin_free, main_free, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_FREE
 #endif
 
-#if !defined CMD_TIMES || CMD_TIMES == true
+#if !defined CMD_TIMES
+#define CMD_TIMES true
+#endif
+#if CMD_TIMES == true
 const char PROGMEM _bin_times[] = "times";
-#define PROGFS_ENT__BIN_TIMES {_bin_times,      (void *)main_times, FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_TIMES PROGFS_ENTRY(_bin_times, main_times, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_TIMES
 #endif
 
-#if !defined CMD_SET || CMD_SET == true
+#if !defined CMD_SET
+#define CMD_SET true
+#endif
+#if CMD_SET == true
 const char PROGMEM _bin_set[] = "set";
-#define PROGFS_ENT__BIN_SET   {_bin_set,        (void *)main_set,   FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_SET   PROGFS_ENTRY(_bin_set, main_set, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_SET
 #endif
 
-#if !defined CMD_TRUE || CMD_TRUE == true
+#if !defined CMD_TRUE
+#define CMD_TRUE true
+#endif
+#if CMD_TRUE == true
 const char PROGMEM _bin_true[] = "true";
-#define PROGFS_ENT__BIN_TRUE  {_bin_true,       (void *)main_true,  FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_TRUE  PROGFS_ENTRY(_bin_true, main_true, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_TRUE
 #endif
 
-#if !defined CMD_FALSE || CMD_FALSE == true
+#if !defined CMD_FALSE
+#define CMD_FALSE true
+#endif
+#if CMD_FALSE == true
 const char PROGMEM _bin_false[] = "false";
-#define PROGFS_ENT__BIN_FALSE {_bin_false,      (void *)main_false, FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_FALSE PROGFS_ENTRY(_bin_false, main_false, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_FALSE
 #endif
 
-#if !defined CMD_CAT || CMD_CAT == true
+#if !defined CMD_CAT
+#define CMD_CAT true
+#endif
+#if CMD_CAT == true
 const char PROGMEM _bin_cat[] = "cat";
-#define PROGFS_ENT__BIN_CAT   {_bin_cat,        (void *)main_cat,   FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_CAT   PROGFS_ENTRY(_bin_cat, main_cat, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_CAT
 #endif
 
-#if !defined CMD_ECHO || CMD_ECHO == true
+#if !defined CMD_ECHO
+#define CMD_ECHO true
+#endif
+#if CMD_ECHO == true
 const char PROGMEM _bin_echo[] = "echo";
-#define PROGFS_ENT__BIN_ECHO  {_bin_echo,       (void *)main_echo,  FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_ECHO  PROGFS_ENTRY(_bin_echo, main_echo, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_ECHO
 #endif
 
-#if !defined CMD_DEBUG || CMD_DEBUG == true
+#if !defined CMD_DEBUG
+#define CMD_DEBUG true
+#endif
+#if CMD_DEBUG == true
 const char PROGMEM _bin_debug[] = "debug";
-#define PROGFS_ENT__BIN_DEBUG {_bin_debug,      (void *)main_debug, FS_EXEC | FS_READ,          0}
+#define PROGFS_ENT__BIN_DEBUG PROGFS_ENTRY(_bin_debug, main_debug, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_DEBUG
 #endif
 
-#define PROGFS_ENT_COREUTILS   PROGFS_ENT__BIN_LS, \
-  PROGFS_ENT__BIN_CD, \
-  PROGFS_ENT__BIN_FREE, \
-  PROGFS_ENT__BIN_TIMES, \
-  PROGFS_ENT__BIN_SET, \
-  PROGFS_ENT__BIN_TRUE, \
-  PROGFS_ENT__BIN_FALSE, \
-  PROGFS_ENT__BIN_CAT, \
-  PROGFS_ENT__BIN_ECHO, \
-  PROGFS_ENT__BIN_DEBUG,
+#define PROGFS_ENT_COREUTILS   PROGFS_ENT__BIN_LS \
+  PROGFS_ENT__BIN_CD \
+  PROGFS_ENT__BIN_FREE \
+  PROGFS_ENT__BIN_TIMES \
+  PROGFS_ENT__BIN_SET \
+  PROGFS_ENT__BIN_TRUE \
+  PROGFS_ENT__BIN_FALSE \
+  PROGFS_ENT__BIN_CAT \
+  PROGFS_ENT__BIN_ECHO \
+  PROGFS_ENT__BIN_DEBUG
 
 
 // file system definition
