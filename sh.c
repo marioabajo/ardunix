@@ -658,18 +658,21 @@ uint8_t getcmd(char buff[])
   return buffp;
 }
 
-uint8_t main_sh(char *argv[], char *env[])
+int8_t main_sh(char *argv[], char *env[])
 {
   // input line buffer
   char line[ARGMAX];
   size_t len;
   uint8_t exit_flag = 1;
-  uint8_t result;
+  int8_t result;
   uint8_t delete_at_exit = 0;
 
   if (argv[1] != NULL)
+  {
     // TODO
     printf_P(PSTR("TODO RUN: %s\n"), argv[1]);
+    return 0;
+  }
 
   // add a environment if it doesn't exist
   if (env == NULL)

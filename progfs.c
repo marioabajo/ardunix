@@ -3,12 +3,21 @@
 #include "progfs.h"
 
 struct dirent * copy_dirent(DIR *d, uint8_t inode)
+/* Fill a dirent structure copyng the data from a DIR structure.
+ * No allocation is done as the memory is already reserved inside 
+ * DIR structure
+ * 
+ * Input: DIR structute, inode number
+ * Returns: direntry
+ */
 {
   struct dirent *e;
   PFS2 thisentry;
 
+  // copy the inode data to memry for simplicity
   memcpy_P(&thisentry, &ProgFs2[inode], sizeof(PFS2));
 
+  // fill the dirent structure
   e = &d->dd_ent;
   strncpy_P(e->d_name, thisentry.name, FILENAME_MAX);
   e->flags = thisentry.perm;
@@ -19,66 +28,85 @@ struct dirent * copy_dirent(DIR *d, uint8_t inode)
 }
 
 uint8_t progfs_stat(const char *pathname, struct stat *buf)
+/* Fill a stat structure with all the information about the file
+ * if the file was not found, return false
+ * 
+ * Input: string (path), struct stat
+ * Returns: 0 -> found
+ *          1 -> invalid filename
+ *          2 -> path too large
+ *          3 -> not found
+ */
 {
-    uint8_t i = 0, ptr = 0;
-    char actualname[PATH_MAX] = "";
-    PFS2 thisentry;
-    
-    if (pathname == 0)
-        return 1; //invalid filename
-    
-    do
+  uint8_t i = 0, ptr = 0;
+  char actualname[PATH_MAX] = "";
+  PFS2 thisentry;
+
+  if (pathname == 0)
+    return 1; //invalid filename
+
+  do
+  {
+    // copy to memory the progfs2 entry to work with
+    memcpy_P(&thisentry, &ProgFs2[i], sizeof(PFS2));
+
+    // read the name of the next entry, if it's not null copy to actualname, 
+    // if it's null must be a directory
+    if (thisentry.name)
     {
-        memcpy_P(&thisentry, &ProgFs2[i], sizeof(PFS2));
-        // read the name of the next entry, if it's not null copy to actualname
-        if (thisentry.name)
-        {
-            strncpy_P(actualname + ptr, thisentry.name, PATH_MAX - ptr);
-            
-            //DEBUGING: printf("DEBUG progfs_stat: ptr:%d i:%d actualname:%s\n",ptr,i,actualname);
-            // compare it with the filename supplied, if coincide, we have a match
-            if (strncmp(pathname, actualname, PATH_MAX) == 0)
-            {
-                buf->st_ino = i;
-                buf->st_mode = thisentry.perm;
-                buf->st_size = thisentry.size;
-                return 0;
-            }
+      strncpy_P(actualname + ptr, thisentry.name, PATH_MAX - ptr);
 
-            // prepare for the next iteration
-            // if the actual entry is a directory, add '/' at the end
-            // TODO: check permissions
-            if ((thisentry.perm & FS_MASK_FILETYPE) == FS_DIR)
-            {
-                // ptr points to the last position of the directory in the pathname
-                ptr += strlen_P(thisentry.name);
-                if (ptr>1)
-                {
-                    if (ptr + 2 >= PATH_MAX)
-                        return 1; // path too large
-                    actualname[ptr++] = '/';
-                    actualname[ptr] = 0;
-                }
-            }
-        }
-        // if the entry it's null indicates the end of a directory
-        else
+      //DEBUGING: printf("DEBUG progfs_stat: ptr:%d i:%d filename: %s actualname:%s\n",ptr,i,pathname,actualname);
+      // compare it with the filename supplied, if coincide, we have a match and we have finished
+      if (strncmp(pathname, actualname, PATH_MAX) == 0)
+      {
+        buf->st_ino = i;
+        buf->st_mode = thisentry.perm;
+        buf->st_size = thisentry.size;
+        return 0;
+      }
+
+      // prepare for the next iteration
+      // if the actual entry is a directory, add '/' at the end
+      if ((thisentry.perm & FS_DIR) && (thisentry.perm & FS_EXEC))
+      {
+        // ptr points to the last position of the directory in the pathname
+        ptr += strlen_P(thisentry.name);
+        // this if is to avoid doing this with the root directory
+        if (ptr > 1)
         {
-            // go back and delete the last element in the path
-            ptr--;
-            while (ptr > 0 && actualname[ptr-1] != '/')
-                ptr--;
-            actualname[ptr] = 0;
+          if (ptr + 2 >= PATH_MAX)
+            return 2; // path too large
+          actualname[ptr++] = '/';
         }
-    
-        i++;
+        actualname[ptr] = 0;
+      }
     }
-    while (ptr > 0);
+    // if the entry it's null indicates the end of a directory
+    else if (ptr > 0)
+    {
+      // go back and delete the last element in the path
+      do
+        ptr--;
+      while (ptr > 0 && actualname[ptr-1] != '/');
+      actualname[ptr] = 0;
+    }
+    i++;
+  }
+  while (ptr > 0);
 
-    return 255; // Not found
+  return 3; // Not found
 }
 
 uint8_t progfs_fstat(FD *fd, struct stat *buf)
+/* Fill a stat structure from an already open file
+ * given the file descriptor
+ * 
+ * Input: FD, struct stat
+ * Returns: 0 -> ok
+ *          1 -> invalid FD
+ *          2 -> invalid struct stat
+ */
 {
   PFS2 thisentry;
 
@@ -87,11 +115,11 @@ uint8_t progfs_fstat(FD *fd, struct stat *buf)
   if (buf == NULL)
     return 2;
 
+  // TODO: check limits of fd->inum
   // TODO: we could do better, just copy the perm byte
   memcpy_P(&thisentry, &ProgFs2[fd->inum], sizeof(PFS2));
 
   buf->st_ino = fd->inum;
-  // TODO: check limits of fd-inum
   buf->st_mode = thisentry.perm;
   buf->st_size = fd->size;
 
@@ -99,16 +127,26 @@ uint8_t progfs_fstat(FD *fd, struct stat *buf)
 }
 
 uint8_t progfs_opendir(const char *path, DIR *d)
+/* Fill a DIR structure with data over a directory string 
+ * passed as an argument, with the idea of going through
+ * any or all the elements of the directory.
+ * 
+ * Input: path string, DIR struct (already reserved)
+ * Returns: 0 -> ok
+ *          1 to 3 -> see progfs_stat
+ *          4 -> Not a directory
+ */
 {
+  uint8_t ret;
   struct stat file;
   PFS2 thisentry;
 
   // Stat the directory and check that it is a directory
-  if (progfs_stat(path, &file) != 0 || (file.st_mode & FS_MASK_FILETYPE) != FS_DIR)
-    return 1; // directory doesn't exist
+  if ((ret = progfs_stat(path, &file)) != 0)
+    return ret; // see progfs_stat returns
 
-  if ((file.st_mode & FS_MASK_PERMISSION) != (FS_EXEC | FS_READ))
-    return 2; // permission denied
+  if (!(file.st_mode & FS_DIR))
+    return 4; // not a directory
 
   // TODO: we could do better, just copy the size word
   memcpy_P(&thisentry, &ProgFs2[file.st_ino], sizeof(PFS2));
@@ -116,7 +154,7 @@ uint8_t progfs_opendir(const char *path, DIR *d)
   // Position to the first child
   d->dd_size = thisentry.size;
   d->dd_buf = file.st_ino;
-  d->dd_loc = 0;
+  d->dd_loc = 1;
   
   copy_dirent(d, file.st_ino);
 
@@ -124,14 +162,20 @@ uint8_t progfs_opendir(const char *path, DIR *d)
 }
 
 struct dirent *progfs_readdir(DIR *dirp)
+/* Read the next entry in the dircetory
+ * 
+ * Input: DIR struct
+ * Returns: dirent struct
+ *          NULL -> No more entries left or no 
+ *                  permission to list the directory
+ */
 {
   uint8_t level = 0, i;
   struct dirent *e;
   PFS2 thisentry;
 
-  // if it's the root directory, we want to list whats inside it, so we need this litle trick
-  if (dirp->dd_loc == 0)
-      dirp->dd_loc++;
+  if (!(dirp->dd_ent.flags & FS_READ))
+    return NULL; // we don't have reading permissions in this directory
  
   i = dirp->dd_buf + dirp->dd_loc;
 
@@ -148,16 +192,16 @@ struct dirent *progfs_readdir(DIR *dirp)
   // Point to next entry, but check first if its a directory and bypass the contents
   do
   {
-      if ((thisentry.perm & FS_MASK_FILETYPE) == FS_DIR)
+      if (thisentry.perm & FS_DIR)
           level++;
       else if (thisentry.name == 0)
           level--;
       dirp->dd_loc++;
       i++;
       // TODO: we could do better, just copy the name pointer
-      if (level > 0)
+      if (level)
         memcpy_P(&thisentry, &ProgFs2[i], sizeof(PFS2));
-  } while (level > 0);
+  } while (level);
 
   return e;
 }
@@ -169,19 +213,29 @@ uint8_t progfs_closedir(DIR *dirp)
 
 void progfs_rewinddir(DIR *dirp)
 {
-  dirp->dd_loc = 0;
+  dirp->dd_loc = 1;
 }
 
 uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
+/* Open a file given it's path so a File Descriptor structure is
+ * filled with data
+ * 
+ * Input: path string, open flags (actually read is supported),
+ *        FD structures (already reserved)
+ * Returns: 0 -> ok
+ *          1 to 3 -> see progfs_stat returns
+ *          4 -> it's a directory
+ */
 {
+  uint8_t ret;
   struct stat file;
 
   // Stat the file
-  if (progfs_stat(path, &file) != 0)
-    return 1; // file doesn't exist
+  if ((ret = progfs_stat(path, &file)) != 0)
+    return ret; // see progfs_stat returns
 
-  if ((file.st_mode & FS_MASK_FILETYPE) == FS_DIR)
-    return 2; // it's a directory
+  if (file.st_mode & FS_DIR)
+    return 4; // it's a directory
 
   // TODO: check flags
 
@@ -202,7 +256,7 @@ uint8_t progfs_read(FD *fd, void *buf, uint8_t size)
 
   // TODO: we could do better, just copy the ptr pointer
   memcpy_P(&thisentry, &ProgFs2[fd->inum], sizeof(PFS2));
-  
+
   for (; fd->address < fd->size && cont < size; fd->address++)
   {
     ptr = buf + cont;
@@ -215,8 +269,7 @@ uint8_t progfs_read(FD *fd, void *buf, uint8_t size)
 
 uint8_t progfs_write(FD *fd, void *buf, uint8_t size)
 {
-  // TODO
-  return 0;
+  return 1;  // we actually cannot support writing in arduino harvard architecture
 }
 
 

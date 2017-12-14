@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #define ARDUNIX_VER "0.5"
-#define ARDUNIX_DATE "2017/12/03"
+#define ARDUNIX_DATE "2017/12/14"
 
 // sh.h
 #if !defined CMD_SH

@@ -80,7 +80,7 @@ void loop()
 int main(void)
 #endif
 {
-  uint8_t ret;
+  int8_t ret;
   
   // Show welcome message
   execl_P(PSTR("/bin/cat"), PSTR("/etc/issue"), 0);

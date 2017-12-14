@@ -37,13 +37,13 @@ void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 }
 
 // list files and directories
-uint8_t main_ls(char *argv[])
+int8_t main_ls(char *argv[])
 {
   DIR dir;
   char *fn = HOME;
   struct stat obj;
   struct dirent *entry;
-  uint8_t ret = 0;
+  int8_t ret = 0;
   uint8_t i = 1;
   bool _exit = 0;
 
@@ -99,7 +99,7 @@ uint8_t main_ls(char *argv[])
   return NULL;
 }*/
 
-uint8_t main_cd(char *argv[], char *env[])
+int8_t main_cd(char *argv[], char *env[])
 {
 /*  char *cwd, *named = NULL;
   struct stat file;
@@ -140,7 +140,7 @@ uint8_t main_cd(char *argv[], char *env[])
 }
 
 // Print free ram
-uint8_t main_free (char *argv[])
+int8_t main_free (char *argv[])
 {
 #ifdef __AVR__
   extern unsigned int __heap_start;
@@ -156,10 +156,10 @@ uint8_t main_free (char *argv[])
   return 0;
 }
 
-uint8_t main_times (char *argv[])
+int8_t main_times (char *argv[])
 {
   unsigned long t1;
-  uint8_t i = 0;
+  int8_t i = 0;
   
   t1=millis();
   if (argv[1] != NULL)
@@ -173,7 +173,7 @@ uint8_t main_times (char *argv[])
 }
 
 // list environment variables
-uint8_t main_set(char *argv[], char *env[])
+int8_t main_set(char *argv[], char *env[])
 {
   uint8_t i = 0;
 
@@ -187,17 +187,17 @@ uint8_t main_set(char *argv[], char *env[])
   return 0;
 }
 
-uint8_t main_true()
+int8_t main_true()
 {
   return 0;
 }
 
-uint8_t main_false()
+int8_t main_false()
 {
   return 1;
 }
 
-uint8_t main_cat(char *argv[])
+int8_t main_cat(char *argv[])
 {
   FD fd;
   char c;
@@ -214,7 +214,7 @@ uint8_t main_cat(char *argv[])
   return 0;
 }
 
-uint8_t main_echo(char *argv[])
+int8_t main_echo(char *argv[])
 {
   uint8_t i = 1;
 
@@ -252,7 +252,7 @@ void debug_dump(uint16_t src, const void *ptr, size_t msize)
   }
 }
 
-uint8_t main_debug(char *argv[])
+int8_t main_debug(char *argv[])
 {
 
 #ifdef __AVR__

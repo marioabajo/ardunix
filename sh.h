@@ -6,7 +6,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  uint8_t main_sh(char *argv[], char *env[]);
+  int8_t main_sh(char *argv[], char *env[]);
 #ifdef __cplusplus
 }
 #endif
