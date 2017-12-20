@@ -570,12 +570,12 @@ uint8_t eval_if(block a, char *env[])
   uint8_t state = 0;
   size_t limit;
 
-  while (state < 7)
+  while (state < 8)
   {
-    if (state != 4 && state != 6)
-      get_string(&a);
-    else
+    if (state == 4)
       found = find_else_fi(a, &limit);
+    else
+      get_string(&a);
 
     switch (state)
     {
@@ -586,22 +586,24 @@ uint8_t eval_if(block a, char *env[])
         cond = eval(a.p + a.pos, a.len, env);
         break;
       case 2: // jump the new line/semi colon character
-        break;
       case 3: // now we need the then
-        break;
       case 4: // look for the "else" or "fi" token and save the block limit
         break;
       case 5: // process the "then" part
+        a.len = limit - a.pos;
         if (!cond)
-          error = eval(a.p + a.pos, limit - a.pos, env);
-        // goto the end of the "then" section
-        a.pos = limit;
+          error = eval(a.p + a.pos, a.len, env);
+        // if we don't found an else, skip to the fi
         if (found != 2)
-          state++;
+          state += 2;
         break;
-      case 6: // if we have an "else" part
+      case 6:
+        break; // read the "else"
+      case 7: // if we have an "else" part, limit it and run it
+        find_else_fi(a, &limit);
+        a.len = limit - a.pos;
         if (cond)
-          error = eval(a.p + a.pos, limit - a.pos, env);
+          error = eval(a.p + a.pos, a.len, env);
         break;
     }
 
@@ -626,9 +628,16 @@ uint8_t getcmd(char buff[])
     // treat special charaters
     switch(buff[buffp])
     {
+      // delete (bakcspace over serial port)
+      case 0x7f:
+        if (buffp > 0)
+        {
+          putchar(8);
+          putchar(' ');
+          putchar(8);
+        }
       // backspace
       case 0x08:
-        // TODO: go back one position in screen
         buff[buffp]=0;
         if (buffp > 0)
           buffp--;
@@ -708,7 +717,7 @@ int8_t main_sh(char *argv[], char *env[])
   if (delete_at_exit)
     free(env);
 
-  return 0;
+  return result;
 }
 
 

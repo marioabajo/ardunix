@@ -117,7 +117,7 @@ int8_t __attribute__((noinline)) analize_file(const char *argv[], long *inode, u
   *vfs_type = fs.vfs_fstype;
 
   // Check if its a script
-  read(&fd, aux, PATH_MAX);
+  read(&fd, aux, (uint8_t) PATH_MAX);
   if (aux[0] == '#' && aux[1] == '!')
   {
     // end the interpreter string with a 0
@@ -181,9 +181,6 @@ int8_t execve(const char *argv[], char *envp[])
   if (vfs_type == FS_TYPE_PROGFS)
   {
       ret = ((int8_t (*)(const char *argv[], char *envp[])) pgm_read_ptr(&(ProgFs2[inode].ptr)))(argv, envp);
-      // return values bellow 0 are reserved to the kernel
-      if ( ret < 0 )
-        ret = -ret;
       //return ((int8_t (*)(const char *argv[], char *envp[])) (ProgFs2[file.st_ino].ptr))(argv, envp);
   }
   

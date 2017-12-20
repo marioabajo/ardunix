@@ -11,53 +11,34 @@
  * we need to redefine it to our value no avoid stack corruption
  */
 #undef FILENAME_MAX
-#include "config.h"
+
+// ARGMAX never bigger than 256, uint8_t used as index
+#define ARGMAX 80   // max input line size
+#define FILENAME_MAX 16 // filename max size
+#define PATH_MAX 64 // path max size
+#define NCARGS 16   // max number of parameters
+#define ENV_MAX 16  // max number of environment variables
+#define IFS ' '     // inter field separator
+// TODO: just one path at this moment
+#define PATH /bin   // fixed path
+#define HOME "/"    // fixed home
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
 /*
  *  Arduino
  */
 
 #ifdef __AVR__
-#include <avr/pgmspace.h>
-
-  #ifdef __cplusplus
-  extern "C"{
-  #endif
-  
-  #ifdef __cplusplus
-  }
-  #endif
+  #include <avr/pgmspace.h>
+  #include "platform_avr.h"
 
 /*
  * PC
  */
-#else
-  #include <time.h>
-
-  #ifdef __cplusplus
-  extern "C"{
-  #endif
-  void delay(long ms);
-  unsigned int pgm_read_word(const uint16_t *d);
-  uint8_t pgm_read_byte(const uint8_t *d);
-  #ifdef __cplusplus
-  }
-  #endif
-  
-  #define millis() (long) time(NULL)
-  #define pgm_read_ptr(x) *(x)
-  #define PROGMEM
-  #define PSTR(s) (s)
-  #define strlen_P strlen
-  #define strcpy_P strcpy
-  #define strncpy_P strncpy
-  #define strcmp_P strcmp
-  #define strncmp_P strncmp
-  #define fprintf_P fprintf
-  #define printf_P printf
-  #define snprintf_P snprintf
-  #define puts_P puts
-  #define memcpy_P memcpy
+#elif defined(__x86_64__) || defined(__i386__)
+  #include "platform_x86.h"
 #endif
 
 #endif

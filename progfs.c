@@ -14,7 +14,7 @@ struct dirent * copy_dirent(DIR *d, uint8_t inode)
   struct dirent *e;
   PFS2 thisentry;
 
-  // copy the inode data to memry for simplicity
+  // copy the inode data to memory for simplicity
   memcpy_P(&thisentry, &ProgFs2[inode], sizeof(PFS2));
 
   // fill the dirent structure
@@ -68,7 +68,7 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
 
       // prepare for the next iteration
       // if the actual entry is a directory, add '/' at the end
-      if ((thisentry.perm & FS_DIR) && (thisentry.perm & FS_EXEC))
+      if (((thisentry.perm & FS_MASK_FILETYPE) == FS_DIR) && (thisentry.perm & FS_EXEC))
       {
         // ptr points to the last position of the directory in the pathname
         ptr += strlen_P(thisentry.name);
@@ -108,7 +108,7 @@ uint8_t progfs_fstat(FD *fd, struct stat *buf)
  *          2 -> invalid struct stat
  */
 {
-  PFS2 thisentry;
+  uint8_t perm;
 
   if (fd == NULL)
     return 1;
@@ -116,11 +116,10 @@ uint8_t progfs_fstat(FD *fd, struct stat *buf)
     return 2;
 
   // TODO: check limits of fd->inum
-  // TODO: we could do better, just copy the perm byte
-  memcpy_P(&thisentry, &ProgFs2[fd->inum], sizeof(PFS2));
+  perm = pgm_read_byte((uint8_t *) &ProgFs2[fd->inum] + offsetof(PFS2, perm));
 
   buf->st_ino = fd->inum;
-  buf->st_mode = thisentry.perm;
+  buf->st_mode = perm;
   buf->st_size = fd->size;
 
   return 0;
@@ -139,20 +138,20 @@ uint8_t progfs_opendir(const char *path, DIR *d)
 {
   uint8_t ret;
   struct stat file;
-  PFS2 thisentry;
+  uint16_t size;
 
   // Stat the directory and check that it is a directory
   if ((ret = progfs_stat(path, &file)) != 0)
     return ret; // see progfs_stat returns
 
-  if (!(file.st_mode & FS_DIR))
+  if (!((file.st_mode & FS_MASK_FILETYPE) == FS_DIR))
     return 4; // not a directory
 
-  // TODO: we could do better, just copy the size word
-  memcpy_P(&thisentry, &ProgFs2[file.st_ino], sizeof(PFS2));
+  // Read the size of the directory
+  size = pgm_read_word((uint16_t *) &ProgFs2[file.st_ino] + offsetof(PFS2, size));
 
   // Position to the first child
-  d->dd_size = thisentry.size;
+  d->dd_size = size;
   d->dd_buf = file.st_ino;
   d->dd_loc = 1;
   
@@ -179,12 +178,12 @@ struct dirent *progfs_readdir(DIR *dirp)
  
   i = dirp->dd_buf + dirp->dd_loc;
 
-  // TODO: we could do better, just copy the perm byte
+  // Copy the entry to ram so it's easy to work with
   memcpy_P(&thisentry, &ProgFs2[i], sizeof(PFS2));
 
   // If the actual entry is a directory terminator, we reached the end of the listing
-   if (thisentry.name == 0)
-      return NULL;
+  if (thisentry.name == 0)
+    return NULL;
 
   // Read entry
   e = copy_dirent(dirp, i);
@@ -192,15 +191,15 @@ struct dirent *progfs_readdir(DIR *dirp)
   // Point to next entry, but check first if its a directory and bypass the contents
   do
   {
-      if (thisentry.perm & FS_DIR)
-          level++;
-      else if (thisentry.name == 0)
-          level--;
-      dirp->dd_loc++;
-      i++;
-      // TODO: we could do better, just copy the name pointer
-      if (level)
-        memcpy_P(&thisentry, &ProgFs2[i], sizeof(PFS2));
+    if ((thisentry.perm & FS_MASK_FILETYPE) == FS_DIR)
+        level++;
+    else if (thisentry.name == 0)
+        level--;
+    dirp->dd_loc++;
+    i++;
+    // TODO: we could do better, just copy the name pointer
+    if (level)
+      memcpy_P(&thisentry, &ProgFs2[i], sizeof(PFS2));
   } while (level);
 
   return e;
@@ -234,7 +233,7 @@ uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
   if ((ret = progfs_stat(path, &file)) != 0)
     return ret; // see progfs_stat returns
 
-  if (file.st_mode & FS_DIR)
+  if ((file.st_mode & FS_MASK_FILETYPE) == FS_DIR)
     return 4; // it's a directory
 
   // TODO: check flags
@@ -251,16 +250,19 @@ uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
 uint8_t progfs_read(FD *fd, void *buf, uint8_t size)
 {
   char *ptr;
+  //unsigned int data;
   long cont=0;
   PFS2 thisentry;
 
   // TODO: we could do better, just copy the ptr pointer
+  //data = pgm_read_ptr(&ProgFs2[fd->inum] + offsetof(PFS2, ptr)); 
   memcpy_P(&thisentry, &ProgFs2[fd->inum], sizeof(PFS2));
 
   for (; fd->address < fd->size && cont < size; fd->address++)
   {
     ptr = buf + cont;
     *ptr = pgm_read_byte(thisentry.ptr + fd->address);
+    //*ptr = pgm_read_byte(data + fd->address);
     cont++;
   }
 

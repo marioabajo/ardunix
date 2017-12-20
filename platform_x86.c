@@ -1,10 +1,6 @@
 #include "platform.h"
 
-#ifdef __AVR__
-
-
-
-#else
+#if defined(__x86_64__) || defined(__i386__)
 
 void delay(long ms)
 {

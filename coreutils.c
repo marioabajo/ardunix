@@ -3,9 +3,6 @@
 #include "fs.h"
 #include <stdio.h>
 #include <string.h>
-#ifdef __AVR__
-#include <Arduino.h>
-#endif
 
 void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 {
@@ -24,7 +21,7 @@ void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
       c = 'l';
       break;
     case FS_DEV: // Device
-      c = 'c'; // TODO: Another case for each type of dev
+      c = 'c'; // TODO: Another case for each type of dev?
   }
 
   if (f & FS_READ)
@@ -69,7 +66,7 @@ int8_t main_ls(char *argv[])
           ret = 1;
         else
         {
-          ls_print_entry(dir.dd_ent.flags, dir.dd_ent.size ,".");
+          ls_print_entry(dir.dd_ent.flags, dir.dd_ent.size, ".");
           while ((entry = readdir(&dir)) != NULL)
             ls_print_entry(entry->flags, entry->size, entry->d_name);
         }
@@ -140,19 +137,15 @@ int8_t main_cd(char *argv[], char *env[])
 }
 
 // Print free ram
-int8_t main_free (char *argv[])
+int8_t main_free (void)
 {
-#ifdef __AVR__
-  extern unsigned int __heap_start;
-  extern void *__brkval;
-  unsigned int HEAPEND = (__brkval == 0 ? (unsigned int) &__heap_start : (unsigned int) __brkval);
+  size_t HEAPSTART = (size_t) &__heap_start;
+  size_t HEAPEND = (__brkval == 0 ? HEAPSTART : (size_t) __brkval);
   int total = 0;
 
-  printf_P(PSTR("total=%d data=%d heap=%d stack=%d free=%d\n"), RAMEND - RAMSTART, (unsigned int) &__heap_start - RAMSTART, 
-           HEAPEND - (unsigned int) &__heap_start, RAMEND - (unsigned int) &total, (unsigned int) &total - HEAPEND + total);
-#else
-  printf("Free not implemented in this arch.\n");
-#endif
+  printf_P(PSTR("total=%d data=%d heap=%d stack=%d free=%d\n"), RAMEND - RAMSTART, HEAPSTART - RAMSTART, 
+           HEAPEND - HEAPSTART, RAMEND - (size_t) &total, (size_t) &total - HEAPEND + total);
+
   return 0;
 }
 
@@ -255,15 +248,12 @@ void debug_dump(uint16_t src, const void *ptr, size_t msize)
 int8_t main_debug(char *argv[])
 {
 
-#ifdef __AVR__
-  uint16_t marker;
+  size_t marker;
   int msize = 0;
-  extern unsigned int __heap_start;
-  extern void *__brkval;
-  unsigned int DATAEND =(int) &__heap_start;
-  unsigned int DATASIZE = DATAEND - RAMSTART;
-  unsigned int HEAPSTART = (int) &__heap_start;
-  unsigned int HEAPEND = (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+  size_t HEAPSTART = (size_t) &__heap_start;
+  size_t HEAPEND = (__brkval == 0 ? HEAPSTART : (size_t) __brkval);
+  size_t DATAEND = HEAPSTART;
+  size_t DATASIZE = DATAEND - RAMSTART;
   uint8_t i = 1;
 
   if (argv[i] == NULL)
@@ -280,18 +270,18 @@ int8_t main_debug(char *argv[])
         printf_P(PSTR("Debug help:\n -d  dump data memory\n -s  print stack\n -H  dump heap\n"));
         break;
       case 'd':
-        debug_dump((uint16_t) RAMSTART, (void*) RAMSTART, DATASIZE);
+        debug_dump((size_t) RAMSTART, (void*) RAMSTART, DATASIZE);
         break;
       case 's':
-        msize = RAMEND - (uint16_t) &marker + 1;
-        debug_dump((uint16_t) &marker, (void*) &marker, msize);
+        msize = RAMEND - (size_t) &marker + 1;
+        debug_dump((size_t) &marker, (void*) &marker, msize);
         /* kind of backtrace, but doesn't work as expected 
         for (i=0; i<2; i++)
           printf_P(PSTR("0x%x\n"), __builtin_return_address(i));*/
         break;
       case 'H':
         msize = HEAPEND - HEAPSTART;
-        debug_dump((uint16_t) HEAPSTART, (void*) HEAPSTART, msize);
+        debug_dump((size_t) HEAPSTART, (void*) HEAPSTART, msize);
         break;
       default:
         goto error;
@@ -304,9 +294,5 @@ error:
 help:
   printf_P(PSTR("Use -h to print help\n"));
   return 1;
-#else
-  printf("debug not implemented in this arch.\n");
-#endif
-  return 0;
 }
 

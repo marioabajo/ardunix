@@ -4,9 +4,6 @@
 #include "platform.h"
 #include "fs.h"
 
-// Definition helpers for the filesystem
-#define PROGFS_ENTRY(PATHNAME, FUNC, FLAGS, SIZE) {PATHNAME, (void *)FUNC, FLAGS, SIZE},
-
 // The datastructure of the filesystem
 typedef struct progfsentry {
     const char *name;
@@ -14,6 +11,10 @@ typedef struct progfsentry {
     uint8_t perm;
     uint16_t size;
 } PFS2;
+
+
+// Definition helpers for the progfs filesystem
+#define PROGFS_ENTRY(PATHNAME, FUNC, FLAGS, SIZE) {PATHNAME, (void *)FUNC, FLAGS, SIZE},
 
 // The global variable for the filesystem
 extern const PFS2 PROGMEM ProgFs2[];

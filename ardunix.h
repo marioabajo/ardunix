@@ -10,6 +10,8 @@
 #define ARDUNIX_VER "0.5"
 #define ARDUNIX_DATE "2017/12/14"
 
+#define DEBUG 0
+
 // sh.h
 #if !defined CMD_SH
 #define CMD_SH true
@@ -137,11 +139,14 @@ const char PROGMEM _bin_debug[] = "debug";
 
 
 // file system definition
-const char PROGMEM _[] = "/\0";
+const char PROGMEM _[] = "/";
 const char PROGMEM _bin[] = "bin";
+const char PROGMEM _dev[] = "dev";
 const char PROGMEM _etc[] = "etc";
 const char PROGMEM _etc_issue[] = "issue";
 const char PROGMEM issue[] = "Ardunix " ARDUNIX_VER " (" ARDUNIX_DATE ")\n";
+
+PROGFS_PLATFORM_PREPARE
 
 #define DEF_PROGFS \
 const PFS2 ProgFs2[] = \
@@ -150,6 +155,9 @@ const PFS2 ProgFs2[] = \
   PROGFS_ENT_SH \
   PROGFS_ENT_COREUTILS \
   PROGFS_ENT_BIN_EXTRAS \
+ {0,               0,                  0,                          0}, \
+ {_dev,            NULL,               FS_DIR | FS_EXEC | FS_READ, 0}, \
+  PROGFS_ENT_DEV \
  {0,               0,                  0,                          0}, \
  {_etc,            NULL,               FS_DIR | FS_EXEC | FS_READ, 0}, \
  {_etc_issue,      (void *)issue,      FS_READ,                    sizeof(issue)}, \
