@@ -292,47 +292,47 @@ void extend_to_eol(block *a)
 }
 
 uint8_t str_to_argv(block a, char *dst, char *argv[], char *env[])
+/* Given a block (string), an allocated string with size ARGMAX, an array of arg values
+ * of size NCARGS and an environment array; split the block string, copy the args to
+ * dst and fill the argv array and if an argument is a variable, substitute it
+ *
+ * Input: block, string, argv array and env array
+ * Returns: number of args processed
+ */
 {
   size_t i = 0;
-  uint8_t ret = 0, len, j = 1;
+  uint8_t len, j = 0;
 
-  argv[0] = dst;
-
-  // first, copy the string and separate args
-  while (!(ret || END_OF_BLOCK(a)))
+  // first, separate args and copy the string
+  while (get_string(&a) && j < NCARGS - 1)
   {
-    // TODO: need to thread " " and ' '
-    if (a.p[a.pos] == ' ')
-    {
-      dst[i] = 0;
-      // start pointing to the new arg
-      argv[j++] = dst + i + 1;
-    }
-    else
-      dst[i] = a.p[a.pos];
-    i++;
-    a.pos++;
-    if (i >= ARGMAX)
-      ret = 1; // line too long
-    if (j >= NCARGS)
-      ret = 2; // too many args
+    // copy arg to dst
+    memcpy(dst, a.p + a.pos, a.len);
+    // point arg to dst
+    argv[j++] = dst;
+    // update dst to the end of the arg
+    dst += a.len;
+    // end the arg string with a 0 (that why we copy it to dst
+    //, because the block may not be writable)
+    *(dst++) = 0;
+    // Advance the block pointer so the next string can be matched
+    a.pos += a.len;
   }
 
-  if (!ret)
-    dst[i] = 0;
-
   // check if any arg is a variable and substitute
+  // TODO: Actually we only thread arguments that contain only the variable name
+  //       not a mix of strings and variables in the same arg or inside quotes
   for (i = 0; i<j; i++)
   {
     len = strlen(argv[i]);
     if (is_var(argv[i], len))
       argv[i] = env_get_l(env, argv[i] + 1, len - 1);
   }
-  
-  for (; j < NCARGS; j++)
-    argv[j] = NULL;
 
-  return ret;
+  // Put the last arg to NULL to end the list
+  argv[j] = NULL;
+
+  return j;
 }
 
 void init_block(block src, block *dst)
@@ -675,9 +675,13 @@ int8_t main_sh(char *argv[], char *env[])
   uint8_t exit_flag = 1;
   int8_t result;
   uint8_t delete_at_exit = 0;
+  //FD fd;
 
   if (argv[1] != NULL)
   {
+    /*if ((open(argv[1], O_RDONLY, &fd)) != 0)
+      return 1;
+    */
     // TODO
     printf_P(PSTR("TODO RUN: %s\n"), argv[1]);
     return 0;
@@ -688,7 +692,7 @@ int8_t main_sh(char *argv[], char *env[])
   {
     // alloc a new env
     if ((env = malloc(ENV_MAX * sizeof(char *))) == NULL)
-      return 1; // cannot allocate memory
+      return ENOMEM; // cannot allocate memory
     // clean env
     memset(env, 0, ENV_MAX * sizeof(char *));
     delete_at_exit = 1;

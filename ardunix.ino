@@ -83,11 +83,11 @@ int main(void)
   int8_t ret;
   
   // Show welcome message
-  execl_P(PSTR("/bin/cat"), PSTR("/etc/issue"), 0);
+  execl_P(PSTR("cat"), PSTR("/etc/issue"), 0);
   //execl("/bin/debug", "-s", 0);
   //execl("free", 0);
 
-  ret = execl("/bin/sh", 0);
+  ret = execl("sh", 0);
   //main_sh(NULL, NULL);
   
   printf_P(PSTR("Init process exited(%d), waiting 10 seconds to restart\n"), ret);

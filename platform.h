@@ -12,6 +12,10 @@
  */
 #undef FILENAME_MAX
 
+/*
+ *  System parameters
+ */
+
 // ARGMAX never bigger than 256, uint8_t used as index
 #define ARGMAX 80   // max input line size
 #define FILENAME_MAX 16 // filename max size
@@ -27,7 +31,18 @@
 #define STR(x) STR_HELPER(x)
 
 /*
- *  Arduino
+ *  Error codes
+ */
+
+#define EINVNAME  -1   // filename invalid
+#define ECANTOPEN -2   // could not open file
+#define ENOTFOUND -3   // file not found
+#define EPERM     -4   // invalid permissions
+#define EINVFS    -5   // Invalid filesystem
+#define ENOMEM    -6   // not enought memory
+
+/*
+ *  Arduino platform
  */
 
 #ifdef __AVR__
@@ -35,7 +50,7 @@
   #include "platform_avr.h"
 
 /*
- * PC
+ * PC platform
  */
 #elif defined(__x86_64__) || defined(__i386__)
   #include "platform_x86.h"

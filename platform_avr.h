@@ -6,7 +6,7 @@
 extern unsigned int __heap_start;
 extern void *__brkval;
 
-#define PROGFS_PLATFORM_PREPARE \
+#define PROGFS_PLATFORM_PREPARE /*\
   const char PROGMEM _dev_gpio0[] = "0"; \
   const char PROGMEM _dev_gpio1[] = "1"; \
   const char PROGMEM _dev_gpio2[] = "2"; \
@@ -29,8 +29,9 @@ extern void *__brkval;
   const char PROGMEM _dev_gpioA5[] = "A5"; \
   const char PROGMEM _dev_gpioA6[] = "A6"; \
   const char PROGMEM _dev_gpioA7[] = "A7";
+*/
   
-#define PROGFS_ENT_DEV \
+#define PROGFS_ENT_DEV /*\
     PROGFS_ENTRY(_dev_gpio0, 0, FS_DEV | FS_READ | FS_WRITE, 0) \
     PROGFS_ENTRY(_dev_gpio1, 1, FS_DEV | FS_READ | FS_WRITE, 0) \
     PROGFS_ENTRY(_dev_gpio2, 2, FS_DEV | FS_READ | FS_WRITE, 0) \
@@ -53,6 +54,6 @@ extern void *__brkval;
     PROGFS_ENTRY(_dev_gpioA5, 25, FS_DEV | FS_READ | FS_WRITE, 0) \
     PROGFS_ENTRY(_dev_gpioA6, 26, FS_DEV | FS_READ | FS_WRITE, 0) \
     PROGFS_ENTRY(_dev_gpioA7, 27, FS_DEV | FS_READ | FS_WRITE, 0)
-
+*/
 #endif
 

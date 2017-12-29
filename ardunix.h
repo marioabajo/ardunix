@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #define ARDUNIX_VER "0.5"
-#define ARDUNIX_DATE "2017/12/14"
+#define ARDUNIX_DATE "2017/12/22"
 
 #define DEBUG 0
 

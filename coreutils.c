@@ -296,3 +296,8 @@ help:
   return 1;
 }
 
+int8_t main_test(char *argv[], char *env[])
+{
+  
+}
+

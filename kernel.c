@@ -26,7 +26,7 @@ int8_t execl_P(const PROGMEM char *argv, ...)
     len = strlen_P(p);
     if ((str = malloc(len + 1)) == NULL)
     {
-      ret = 6;
+      ret = ENOMEM;
       goto finish;
     }
     strncpy_P(str, p, len);
@@ -87,32 +87,32 @@ int8_t __attribute__((noinline)) analize_file(const char *argv[], long *inode, u
   uint8_t i;
 
   if (argv == NULL || argv[0] == NULL)
-    return -1; // filename invalid
+    return EINVNAME; // filename invalid
 
   // If the filename looks like a full path, try to open it directly
   if (argv[0][0] == '/')
   {
     if (open(argv[0], 0, &fd) != 0)
-      return -2; // could not open file
+      return ECANTOPEN; // could not open file
   }
   else
   // If not, try to prepend the PATH variable to the filename and try to open then 
   {
     snprintf_P(aux, PATH_MAX, PSTR(STR(PATH) "/%s"), argv[0]);
     if (open(aux, 0, &fd) != 0)
-      return -3; // file not found
+      return ENOTFOUND; // file not found
   }
 
   // and has the correct permissions 
   fstat(&fd, &file);
   if (!(file.st_mode & FS_EXEC))
-    return -4; // bad permissions
+    return EPERM; // bad permissions
 
   *inode = file.st_ino;
 
   // get the filesystem type of the filesystem of this file
   if (fstatvfs(&fd, &fs) != 0)
-    return -5; // kernel error, filesystem not found!?
+    return EINVFS; // kernel error, filesystem not found!?
 
   *vfs_type = fs.vfs_fstype;
 
@@ -134,7 +134,7 @@ int8_t __attribute__((noinline)) analize_file(const char *argv[], long *inode, u
     argv[2] = NULL;
     argv[0] = malloc(i - 1);
     if (argv[0] == NULL)
-      return -6; // not enought memory
+      return ENOMEM; // not enought memory
 
     // copy the string to the new memory location
     memcpy((char *)argv[0], aux + 2, i - 1);
@@ -156,7 +156,7 @@ int8_t execve(const char *argv[], char *envp[])
  *          -2  -> could not open file
  *          -3  -> file not found
  *          -4  -> bad permissions
- *          -5  -> kernel error, filesystem not found!?
+ *          -5  -> invalid filesystem
  *          -6  -> not enought memory
  */
 {
