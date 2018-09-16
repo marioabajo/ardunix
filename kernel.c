@@ -1,11 +1,52 @@
 #include "kernel.h"
+#include "env.h"
 #include "progfs.h"
-#include "fs.h"
-#include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
 
+struct proc procs[PID_MAX];
+int8_t current_proc = 0; // the kernel uses the PID = 0 to start other processes
+
+int8_t proc_allocate(void)
+{
+	int8_t i = 1;
+
+	// Find an available pid
+	while (procs[i].state != 0)
+	{
+		i++;
+		if (i>= PID_MAX)
+			return ENOPID;
+	}
+	
+	procs[i].state = 1;
+	return i;
+}
+
+void proc_clean(int8_t pid)
+{
+	procs[pid].state = 0;
+	procs[pid].name = NULL;
+	procs[pid].cwd[0] = '0';
+}
+
+int8_t init_proc(void)
+{
+	uint8_t i;
+	
+	// clean proc array execpt pid 0
+	for (i=1; i < PID_MAX; i++)
+		proc_clean(i);
+	
+	// fill pid 0 data
+	procs[0].state = 2;
+	procs[0].name = NULL;
+	procs[0].cwd[0] = '/';
+	procs[0].cwd[1] = 0;
+	
+	return 0;
+}
 
 int8_t execl_P(const PROGMEM char *argv, ...)
 {
@@ -77,73 +118,101 @@ int8_t exec(const char *argv[])
   return execve(argv, NULL);
 }
 
-// NOTE: force noinline in order to save stack memory
-int8_t __attribute__((noinline)) analize_file(const char *argv[], long *inode, uint8_t *vfs_type)
+uint8_t insert_interpreter(FD fd, char *argv[])
 {
-  struct statvfs fs;
-  struct stat file;
-  char aux[PATH_MAX];
-  FD fd;
-  uint8_t i;
+	uint8_t i=0;
+	char aux[PATH_MAX];
 
-  if (argv == NULL || argv[0] == NULL)
-    return EINVNAME; // filename invalid
+	read(&fd, &aux, (uint8_t)PATH_MAX);
+	while (i<PATH_MAX && aux[i] != ' ' && aux[i] != '\r' && aux[i] != '\n')
+		i++;
+	// end the interpreter string with a 0
+	aux[i] = 0;
+	
+	// modify argv, so put first the interpreter, and second this script 
+	// filename
+	argv[1] = argv[0];
+	argv[2] = NULL;
+	argv[0] = malloc(i);
+	if (argv[0] == NULL)
+		return ENOMEM; // not enough memory
 
-  // If the filename looks like a full path, try to open it directly
-  if (argv[0][0] == '/')
-  {
-    if (open(argv[0], 0, &fd) != 0)
-      return ECANTOPEN; // could not open file
-  }
-  else
-  // If not, try to prepend the PATH variable to the filename and try to open then 
-  {
-    snprintf_P(aux, PATH_MAX, PSTR(STR(PATH) "/%s"), argv[0]);
-    if (open(aux, 0, &fd) != 0)
-      return ENOTFOUND; // file not found
-  }
+	// copy the string to the new memory location
+	memcpy((char *)argv[0], aux, i);
+	return 0;
+}
 
-  // and has the correct permissions 
-  fstat(&fd, &file);
-  if (!(file.st_mode & FS_EXEC))
-    return EPERM; // bad permissions
+// NOTE: force noinline in order to save memory in the stack
+static int8_t __attribute__((noinline)) check_file(char *argv[], long *inode)
+/* Checks if the given file is valid for execution and return the inode and
+ * if it's a script. It also modifies argv in case of a script appending the
+ * interpreter
+ * 
+ * Input: array with arguments NULL terminated,
+ * Output: inode number
+ * Returns: 1         -> ok, it's a script
+ *          0         -> ok, builtin command
+ *          EINVNAME  -> invalid filename
+ *          ENOTFOUND -> file not found
+ *          EPERM     -> bad attributes
+ *          EINVFS    -> invalid filesystem
+ *          ENOTEXEC  -> not a valid executable
+ *          E2BIG     -> argument list too long
+ *          ENOMEM    -> not enough memory
+ */
+{
+	char fullpath[PATH_MAX], *aux;
+	uint8_t ret;
+	FD fd;
+	struct stat file;
+	struct statvfs fs;
 
-  *inode = file.st_ino;
+	// Check that the argument is not empty / null
+	if (argv == NULL || argv[0] == NULL)
+		return EINVNAME; // filename invalid
 
-  // get the filesystem type of the filesystem of this file
-  if (fstatvfs(&fd, &fs) != 0)
-    return EINVFS; // kernel error, filesystem not found!?
+	// If the filename looks like a full path, try to open it directly
+	if (argv[0][0] == '/')
+		aux = argv[0];
+	// If not, try to prepend the PATH variable to the filename and try to 
+	// open then 
+	else
+	{
+		snprintf_P(fullpath, PATH_MAX, PSTR(STR(PATH) "/%s"), argv[0]);
+		aux = fullpath;
+	}
+	if (open(aux, 0, &fd) != 0)
+		return ENOTFOUND; // file not found
 
-  *vfs_type = fs.vfs_fstype;
+	// Check thath has the correct permissions 
+	fstat(&fd, &file);
+	if (!(file.st_mode & FS_EXEC))
+		return EPERM; // bad permissions
+	*inode = file.st_ino;
 
-  // Check if its a script
-  read(&fd, aux, (uint8_t) PATH_MAX);
-  if (aux[0] == '#' && aux[1] == '!')
-  {
-    // end the interpreter string with a 0
-    for (i=2; i < PATH_MAX; i++)
-    {
-      if (aux[i] == ' ' || aux[i] == '\r' || aux[i] == '\n')
-      {
-          aux[i] = 0;
-          break;
-      }
-    }
-    // modify argv, so put first the interpreter, and second this script filename
-    argv[1] = argv[0];
-    argv[2] = NULL;
-    argv[0] = malloc(i - 1);
-    if (argv[0] == NULL)
-      return ENOMEM; // not enought memory
+	// Check if its a script
+	read(&fd, aux, (uint8_t) 2);
+	if (aux[0] == '#' && aux[1] == '!')
+	{
+		// modify argv to include the interpreter and parameters
+		ret = insert_interpreter(fd, argv);
+		// passtrougt the error
+		if (ret)
+			return ret;
+		return 1; // it's a script, call the interpreter
+	}
 
-    // copy the string to the new memory location
-    memcpy((char *)argv[0], aux + 2, i - 1);
+	// get the filesystem type of the filesystem of this file
+	if (fstatvfs(&fd, &fs) != 0)
+		return EINVFS; // kernel error, filesystem not found!?
 
-    return 1; // it's a script, call the interpreter
-  }
+	// up to this point, the file is executable, accesible and not a script
+	// so it must be a builtin command to be called or an error
+	if (fs.vfs_fstype == FS_TYPE_PROGFS)
+		return 0;
 
-  return 0;
-  
+	return ENOTEXEC; // Not a valid executable
+	
 }
 
 int8_t execve(const char *argv[], char *envp[])
@@ -157,33 +226,65 @@ int8_t execve(const char *argv[], char *envp[])
  *          -3  -> file not found
  *          -4  -> bad permissions
  *          -5  -> invalid filesystem
- *          -6  -> not enought memory
+ *          -6  -> not enough memory
  */
 {
-  int8_t ret = 1;
-  uint8_t vfs_type;
-  long inode;
+	int8_t  ret, cleanenv = 0, pid, oldpid;
+	long    inode;
 
-  // Check file permissions, and if is a script
-  ret = analize_file(argv, &inode, &vfs_type);
-  if (ret < 0)
-    return ret;
+	// Check file path and permissions
+	ret = check_file((char **)argv, &inode);
 
-  if (ret)
-  {
-    // call the interpreter
-    ret = execve(argv, envp);
-    free((char *)argv[0]);
-    return ret;
-  }
+	// If it's a script, call the interpreter
+	if (ret == 1)
+	{
+		// call the interpreter
+		ret = execve(argv, envp);
+		// free the string reserved for the interpreter
+		free((char *)argv[0]);
+	}
+	// If it's a builtin function, call it
+	else if (ret == 0)
+	{
+		// If environemnt doen't exist, create one and destroy at exit
+		if (envp == NULL)
+		{
+			// alloc a new env
+			if ((envp = malloc(ENV_MAX * sizeof(char *))) == NULL)
+				return ENOMEM; // cannot allocate memory
+			cleanenv = 1;
+			// clean env
+			memset(envp, 0, ENV_MAX * sizeof(char *));
+		}
 
-  // Try to execute dircetly ONLY if it's in PROGFS filesystem (internal flash)
-  if (vfs_type == FS_TYPE_PROGFS)
-  {
-      ret = ((int8_t (*)(const char *argv[], char *envp[])) pgm_read_ptr(&(ProgFs2[inode].ptr)))(argv, envp);
-      //return ((int8_t (*)(const char *argv[], char *envp[])) (ProgFs2[file.st_ino].ptr))(argv, envp);
-  }
-  
-  return ret; // not a valid executable
+		// Allocate a proccess id
+		if ((pid = proc_allocate()) == ENOPID)
+			return ENOPID;
+		
+		// fill process data
+		procs[pid].name = (char *)argv[0];
+		memcpy(procs[pid].cwd, procs[current_proc].cwd, sizeof(procs[current_proc].cwd));
+		
+		// change running status of the current process
+		procs[current_proc].state = 1;
+		oldpid = current_proc;
+		current_proc = pid;
+		procs[pid].state = 2;
+		
+		// Run the builtin command
+		ret = ((int8_t (*)(const char *argv[], char *envp[])) \
+		      pgm_read_ptr(&(ProgFs2[inode].ptr)))(argv, envp);
+
+		// free the environemnt if it has been created during execution
+		if (cleanenv)
+			envp = env_free(envp);
+		
+		// free process
+		proc_clean(pid);
+		current_proc = oldpid;
+		procs[current_proc].state = 2;
+	}
+
+	return ret;
 }
 

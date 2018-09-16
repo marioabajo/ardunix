@@ -95,20 +95,35 @@ typedef struct file_descriptor
 #ifdef __cplusplus
 extern "C"{
 #endif
-  uint8_t statvfs(const char* path, struct statvfs *buf);
-  uint8_t fstatvfs(FD *fd, struct statvfs *buf);
-  uint8_t stat(const char *pathname, struct stat *buf);
-  uint8_t fstat(FD *fd, struct stat *buf);
-  uint8_t opendir(const char *path, DIR *d);
-  uint8_t closedir(DIR *dirp);
+  char *normalize_path(const char *path);
+  char *normalize_path_l(const char *path, uint8_t len);
+  char *normalize_paths(const char *path1, const char* path2);
+  char *normalize_paths_l(const char *path1, uint8_t len1, const char *path2, uint8_t len2);
+  char *getcwd(char *buf, size_t size);
+  int8_t statvfs(const char* path, struct statvfs *buf);
+  int8_t fstatvfs(FD *fd, struct statvfs *buf);
+  int8_t stat(const char *pathname, struct stat *buf);
+  int8_t fstat(FD *fd, struct stat *buf);
+  int8_t opendir(const char *path, DIR *d);
+  int8_t closedir(DIR *dirp);
   struct dirent *readdir(DIR *dirp);
   void rewinddir(DIR *dirp);
-  uint8_t open(const char *path, uint8_t flags, FD *fd);
+  int8_t open(const char *path, uint8_t flags, FD *fd);
   uint8_t read(FD *fd, void *buf, uint8_t size);
   uint8_t write(FD *fd, void *buf, uint8_t size);
 #ifdef __cplusplus
 }
 #endif
 
+// tests
+/*
+printf("normalize_path: %s\n", normalize_path("/"));	
+printf("normalize_path: %s\n", normalize_path("/home/abc"));
+printf("normalize_path: %s\n", normalize_path("home/abc"));
+printf("normalize_path: %s\n", normalize_path("/its/a/path/too/large/.///to/be/stored/../../../../in//the/PATH/MAX/variable/except/if/correctly/..//proccessed/"));
+printf("normalize_path: %s\n", normalize_path("/home/abc/../../etc/example/../"));
+*/
+
 #endif
+
 

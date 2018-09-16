@@ -1,7 +1,7 @@
 NAME=main
 
-#CFLAGS=-Os -fno-builtin -g
-CFLAGS=-fno-builtin -g -Wall -fstack-usage
+#CFLAGS=-Os -fno-builtin -Wall -fstack-usage
+CFLAGS=-fno-builtin -g -Wall -Wextra -fstack-usage
 
 C_SRCS=$(wildcard *.c)
 C_OBJS=$(C_SRCS:.c=.o)

@@ -6,6 +6,18 @@
 extern unsigned int __heap_start;
 extern void *__brkval;
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+  void uart_init(void);
+  void uart_putchar(char c, FILE *stream);
+  char uart_getchar(FILE *stream);
+  FILE *fmemopen(void *buf, size_t size, const char *mode);
+  FILE *fopen(const char *path, const char *mode);
+#ifdef __cplusplus
+}
+#endif
+
 #define PROGFS_PLATFORM_PREPARE /*\
   const char PROGMEM _dev_gpio0[] = "0"; \
   const char PROGMEM _dev_gpio1[] = "1"; \

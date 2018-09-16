@@ -7,6 +7,8 @@
  * ========================= */
 
 //#define CMD_LS false
+//#define CMD_PS false
+//#define CMD_PWD false
 #define CMD_CD false
 //#define CMD_SH false
 //#define CMD_SH_SIMPLE true
@@ -29,10 +31,10 @@ const char PROGMEM _etc_script[] = "script";
 const char PROGMEM script[] = "#!/bin/sh\n\nif /bin/false\nthen\n  /bin/ls /bin\nelse\n  /bin/ls /etc\nfi\n";
 
 #define PROGFS_ENT_ETC_EXTRAS \
- PROGFS_ENTRY(_etc_script, script, FS_EXEC | FS_READ, sizeof(script)) \
- PROGFS_ENTRY(_etc_test, NULL, FS_DIR | FS_EXEC | FS_READ, 0) \
- PROGFS_ENTRY(_etc_test_empty, NULL, FS_EXEC | FS_READ, 0) \
- PROGFS_ENTRY(0, 0, 0, 0)
+        PROGFS_ENTRY(_etc_script, script, FS_EXEC | FS_READ, sizeof(script)) \
+        PROGFS_ENTRY(_etc_test, NULL, FS_DIR | FS_EXEC | FS_READ, 0) \
+        PROGFS_ENTRY(_etc_test_empty, NULL, FS_EXEC | FS_READ, 0) \
+        PROGFS_ENTRY(0, 0, 0, 0)
 
 #define PROGFS_ENT_BIN_EXTRAS
 /* END ARDUNIX CONFIG */
@@ -42,37 +44,22 @@ DEF_PROGFS
 
 #ifdef __AVR__
 
-static FILE uart = {0} ;
+FILE uart;
 
-int uart_putchar (char c)
+static void serial_setup()
 {
-    if (c == '\n')
-      Serial.write('\r');
-    Serial.write(c);
-    return 0 ;
-}
+	// Init serial port
+	uart_init();
+	// Init streams
+	fdev_setup_stream(&uart, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
+	stdin = stdout = stderr = &uart;
 
-int uart_getchar ()
-{
-  char a;
-
-  while(Serial.available()==0);
-  a=Serial.read();
-  if (a == '\r')
-    Serial.write("\n");
-  Serial.write(a);
-  return a;
 }
 
 void setup()
 {
-    fdev_setup_stream (&uart, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
-    stdin = stdout = stderr = &uart;
-
-    Serial.begin(115200);
-    //while (!Serial);
-    printf_P(PSTR("Booting...\n"));
-    //printf_P(PSTR("Serial buffer: %d %x"), SERIAL_BUFFER_SIZE, _rx_buffer);
+	serial_setup();
+	printf_P(PSTR("Booting...\n"));
 }
 
 void loop()
@@ -80,17 +67,30 @@ void loop()
 int main(void)
 #endif
 {
-  int8_t ret;
-  
-  // Show welcome message
-  execl_P(PSTR("cat"), PSTR("/etc/issue"), 0);
-  //execl("/bin/debug", "-s", 0);
-  //execl("free", 0);
+	int8_t ret;
 
-  ret = execl("sh", 0);
-  //main_sh(NULL, NULL);
-  
-  printf_P(PSTR("Init process exited(%d), waiting 10 seconds to restart\n"), ret);
-  delay(10000);
+	// Initial process (similar to "init" in linux)
+	init_proc();
+
+	// Show welcome message
+	execl_P(PSTR("cat"), PSTR("/etc/issue"), 0);
+	/*printf("DEBUG: %s\n", normalize_path("a/etc"));
+	printf("DEBUG: %s\n", normalize_path("./abc/3"));
+	printf("DEBUG: %s\n", normalize_paths("/home/a","../.bad/1"));
+	printf("DEBUG: %s\n", normalize_path("////gr/"));
+	printf("DEBUG: %s\n", normalize_path("/1/2/.////3/../../a/2/b"));
+	printf("DEBUG: %s\n", normalize_path("//.//really/.././long/string/.to/check/../break/the/limits.././././/a"));*/
+	
+
+	// exec call for debugging purpose
+	//execl_P(PSTR("sh"), PSTR("/etc/script"), 0);
+	//execl("/bin/debug", "-s", 0);
+	execl("free", 0);
+
+	ret = execl("sh", 0);
+
+	// Warning message in case the process end's and introduce a delay before respawn
+	printf_P(PSTR("Init process exited(%d), waiting 10 seconds to restart\n"), ret);
+	delay(10000);
 }
-  
+

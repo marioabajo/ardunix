@@ -6,95 +6,102 @@
 
 void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 {
-  char c = '?';
-  char r = '-', w = '-', x = '-';
+	char c = '?';
+	char r = '-', w = '-', x = '-';
 
-  switch(f & FS_MASK_FILETYPE)
-  {
-    case FS_FILE:  // File
-      c = '-';
-      break;
-    case FS_DIR: // Directory
-      c = 'd';
-      break;
-    case FS_LINK: // Link
-      c = 'l';
-      break;
-    case FS_DEV: // Device
-      c = 'c'; // TODO: Another case for each type of dev?
-  }
+	switch(f & FS_MASK_FILETYPE)
+	{
+		case FS_FILE:  // File
+			c = '-';
+			break;
+		case FS_DIR: // Directory
+			c = 'd';
+			break;
+		case FS_LINK: // Link
+			c = 'l';
+			break;
+		case FS_DEV: // Device
+			c = 'c'; // TODO: Another case for each type of dev?
+	}
 
-  if (f & FS_READ)
-    r = 'r';
-  if (f & FS_WRITE)
-    w = 'w';
-  if (f & FS_EXEC)
-    x = 'x';
-  printf_P(PSTR("%c%c%c%c %4d %s\n"), c, r, w, x, size, entry_name);
+	if (f & FS_READ)
+		r = 'r';
+	if (f & FS_WRITE)
+		w = 'w';
+	if (f & FS_EXEC)
+		x = 'x';
+	printf_P(PSTR("%c%c%c%c %4d %s\n"), c, r, w, x, size, entry_name);
 }
 
 // list files and directories
 int8_t main_ls(char *argv[])
 {
-  DIR dir;
-  char *fn = HOME;
-  struct stat obj;
-  struct dirent *entry;
-  int8_t ret = 0;
-  uint8_t i = 1;
-  bool _exit = 0;
+	DIR dir;
+	// TODO: initialize fn with CWD env variable
+	char *fn = HOME;
+	struct stat obj;
+	struct dirent *entry;
+	int8_t ret = 0;
+	uint8_t i = 1, _continue = 1;
 
-  // TODO: initialize fn with CWD env variable
-  while (! _exit)
-  {
-    if (argv[i] != NULL)
-      fn = argv[i];
-    else
-    {
-      _exit = 1;
-      if (i > 1)
-        break;
-    }
+	do
+	{
+		if (argv[i] == NULL)
+		{
+			if (i == 1)
+				_continue = 0;
+			else
+				break;
+		}
+		else
+			fn = argv[i];
 
-    if (stat(fn, &obj))
-      ret = 1;
-    else
-    {
-      if (obj.st_mode & FS_DIR)
-      {
-        if (opendir(fn, &dir))
-          ret = 1;
-        else
-        {
-          ls_print_entry(dir.dd_ent.flags, dir.dd_ent.size, ".");
-          while ((entry = readdir(&dir)) != NULL)
-            ls_print_entry(entry->flags, entry->size, entry->d_name);
-        }
-      }
-      else
-        ls_print_entry(obj.st_mode, obj.st_size, fn);
-    }
-          
-    i++;
-  }
+		if ((ret = stat(fn, &obj)))
+			break;;
+	
+		if (obj.st_mode & FS_DIR)
+		{
+			if ((ret = opendir(fn, &dir)))
+				break;
 
-  return ret;
+			ls_print_entry(dir.dd_ent.flags, dir.dd_ent.size, ".");
+			while ((entry = readdir(&dir)) != NULL)
+				ls_print_entry(entry->flags, entry->size, entry->d_name);
+		}
+		else
+			ls_print_entry(obj.st_mode, obj.st_size, fn);
+		
+		i++;
+	} while (_continue);
+
+	return ret;
 }
 
-/*char * realpath(char *path, char *cwd)
+int8_t main_ps(void)
 {
-  char *tmp;
-  uint8_t i = 0, j = 0;
+	int8_t i;
 
-  if ((tmp = malloc(PATH_MAX)) == NULL)
-    return NULL; // not enought memory
+	puts_P(PSTR("PID  STATUS  NAME"));
+	for (i=0; i < PID_MAX; i++)
+	{
+		// TODO: userland should not access process structure directly
+		if (procs[i].state)
+			printf_P(PSTR("%3d  %d     %s\n"), i, procs[i].state, procs[i].name);
+	}
 
-  snprintf_P(PATH_MAX, PSTR("%s/%s"), cwd, path);
-  
-  // TODO TODO
-  
-  return NULL;
-}*/
+	return 0;
+}
+
+int8_t main_pwd(void)
+{
+	char buf[PATH_MAX];
+	
+	if ((getcwd(buf, PATH_MAX)) == NULL)
+		return 1;
+
+	puts(buf);
+	return 0;
+}
 
 int8_t main_cd(char *argv[], char *env[])
 {
@@ -296,8 +303,4 @@ help:
   return 1;
 }
 
-int8_t main_test(char *argv[], char *env[])
-{
-  
-}
 

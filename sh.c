@@ -619,14 +619,20 @@ uint8_t eval_if(block a, char *env[])
 uint8_t getcmd(char buff[])
 {
   uint8_t buffp = 0;
+  uint8_t c;
+  uint8_t _exit = 1;
 
   do
   {
     // read input
-    buff[buffp]=getchar();
+    c = getchar();
+    // local echo
+    if (c == '\r')
+      putchar('\n');
+    putchar(c);
 
     // treat special charaters
-    switch(buff[buffp])
+    switch(c)
     {
       // delete (bakcspace over serial port)
       case 0x7f:
@@ -646,10 +652,14 @@ uint8_t getcmd(char buff[])
       case 0x09:
         // TODO
         break;
+      case '\n':
+      case '\r':
+        _exit = 0;
       // Rest of characters
       default:
+        buff[buffp++] = c;
         // increment index
-        buffp++;
+        //buffp++;
     }
 
     // Check the buffer used
@@ -659,7 +669,7 @@ uint8_t getcmd(char buff[])
       return false;
     }
   }
-  while (buff[buffp-1] != '\n' && buff[buffp-1] != '\r');
+  while (_exit);
 
   // end the command with a \0
   buff[buffp] = 0;
@@ -673,9 +683,7 @@ int8_t main_sh(char *argv[], char *env[])
   char line[ARGMAX];
   size_t len;
   uint8_t exit_flag = 1;
-  int8_t result;
-  uint8_t delete_at_exit = 0;
-  //FD fd;
+  int8_t result = 0;
 
   if (argv[1] != NULL)
   {
@@ -685,17 +693,6 @@ int8_t main_sh(char *argv[], char *env[])
     // TODO
     printf_P(PSTR("TODO RUN: %s\n"), argv[1]);
     return 0;
-  }
-
-  // add a environment if it doesn't exist
-  if (env == NULL)
-  {
-    // alloc a new env
-    if ((env = malloc(ENV_MAX * sizeof(char *))) == NULL)
-      return ENOMEM; // cannot allocate memory
-    // clean env
-    memset(env, 0, ENV_MAX * sizeof(char *));
-    delete_at_exit = 1;
   }
 
   // Set Current Working Directory if doesn't exists
@@ -712,14 +709,13 @@ int8_t main_sh(char *argv[], char *env[])
     len = getcmd(line);
     if (!len)
       continue;
+
     result = eval(line, len, env);
+    // For debuging
     printf_P(PSTR("Result: %d\n"), result);
 
   // TODO: Implement a decent exit mechanism
   } while(exit_flag);
-
-  if (delete_at_exit)
-    free(env);
 
   return result;
 }

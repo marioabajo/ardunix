@@ -27,15 +27,15 @@ struct dirent * copy_dirent(DIR *d, uint8_t inode)
   return e;
 }
 
-uint8_t progfs_stat(const char *pathname, struct stat *buf)
+int8_t progfs_stat(const char *pathname, struct stat *buf)
 /* Fill a stat structure with all the information about the file
  * if the file was not found, return false
  * 
  * Input: string (path), struct stat
  * Returns: 0 -> found
- *          1 -> invalid filename
- *          2 -> path too large
- *          3 -> not found
+ *          EINVNAME -> invalid filename
+ *          ENAMETOOLONG -> path too large
+ *          ENOTFOUND -> not found
  */
 {
   uint8_t i = 0, ptr = 0;
@@ -43,7 +43,7 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
   PFS2 thisentry;
 
   if (pathname == 0)
-    return 1; //invalid filename
+    return EINVNAME; //invalid filename
 
   do
   {
@@ -76,7 +76,7 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
         if (ptr > 1)
         {
           if (ptr + 2 >= PATH_MAX)
-            return 2; // path too large
+            return ENAMETOOLONG; // path too large
           actualname[ptr++] = '/';
         }
         actualname[ptr] = 0;
@@ -95,25 +95,25 @@ uint8_t progfs_stat(const char *pathname, struct stat *buf)
   }
   while (ptr > 0);
 
-  return 3; // Not found
+  return ENOTFOUND; // Not found
 }
 
-uint8_t progfs_fstat(FD *fd, struct stat *buf)
+int8_t progfs_fstat(FD *fd, struct stat *buf)
 /* Fill a stat structure from an already open file
  * given the file descriptor
  * 
  * Input: FD, struct stat
  * Returns: 0 -> ok
- *          1 -> invalid FD
- *          2 -> invalid struct stat
+ *          EINVNAME -> invalid FD
+ *          EADDRNOTAVAIL -> invalid struct stat
  */
 {
   uint8_t perm;
 
   if (fd == NULL)
-    return 1;
+    return EINVNAME;
   if (buf == NULL)
-    return 2;
+    return EADDRNOTAVAIL;
 
   // TODO: check limits of fd->inum
   perm = pgm_read_byte((uint8_t *) &ProgFs2[fd->inum] + offsetof(PFS2, perm));
@@ -125,15 +125,17 @@ uint8_t progfs_fstat(FD *fd, struct stat *buf)
   return 0;
 }
 
-uint8_t progfs_opendir(const char *path, DIR *d)
+int8_t progfs_opendir(const char *path, DIR *d)
 /* Fill a DIR structure with data over a directory string 
  * passed as an argument, with the idea of going through
  * any or all the elements of the directory.
  * 
  * Input: path string, DIR struct (already reserved)
  * Returns: 0 -> ok
- *          1 to 3 -> see progfs_stat
- *          4 -> Not a directory
+ *          EINVNAME -> invalid filename
+ *          ENAMETOOLONG -> path too large
+ *          ENOTFOUND -> not found
+ *          ENOTDIR -> Not a directory
  */
 {
   uint8_t ret;
@@ -145,7 +147,7 @@ uint8_t progfs_opendir(const char *path, DIR *d)
     return ret; // see progfs_stat returns
 
   if (!((file.st_mode & FS_MASK_FILETYPE) == FS_DIR))
-    return 4; // not a directory
+    return ENOTDIR; // not a directory
 
   // Read the size of the directory
   size = pgm_read_word((uint16_t *) &ProgFs2[file.st_ino] + offsetof(PFS2, size));
@@ -205,7 +207,7 @@ struct dirent *progfs_readdir(DIR *dirp)
   return e;
 }
 
-uint8_t progfs_closedir(DIR *dirp)
+int8_t progfs_closedir(DIR *dirp)
 {
   return 0;
 }
@@ -215,15 +217,17 @@ void progfs_rewinddir(DIR *dirp)
   dirp->dd_loc = 1;
 }
 
-uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
+int8_t progfs_open(const char *path, uint8_t flags, FD *fd)
 /* Open a file given it's path so a File Descriptor structure is
  * filled with data
  * 
  * Input: path string, open flags (actually read is supported),
  *        FD structures (already reserved)
  * Returns: 0 -> ok
- *          1 to 3 -> see progfs_stat returns
- *          4 -> it's a directory
+ *          EINVNAME -> invalid filename
+ *          ENAMETOOLONG -> path too large
+ *          ENOTFOUND -> not found
+ *          EISDIR -> it's a directory
  */
 {
   uint8_t ret;
@@ -234,7 +238,7 @@ uint8_t progfs_open(const char *path, uint8_t flags, FD *fd)
     return ret; // see progfs_stat returns
 
   if ((file.st_mode & FS_MASK_FILETYPE) == FS_DIR)
-    return 4; // it's a directory
+    return EISDIR; // it's a directory
 
   // TODO: check flags
 

@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #define ARDUNIX_VER "0.5"
-#define ARDUNIX_DATE "2017/12/22"
+#define ARDUNIX_DATE "2018/09/14"
 
 #define DEBUG 0
 
@@ -34,6 +34,26 @@ const char PROGMEM _bin_ls[] = "ls";
 #define PROGFS_ENT__BIN_LS    PROGFS_ENTRY(_bin_ls, main_ls, FS_EXEC | FS_READ, 0)
 #else
 #define PROGFS_ENT__BIN_LS
+#endif
+
+#if !defined CMD_PS
+#define CMD_PS true
+#endif
+#if CMD_PS == true
+const char PROGMEM _bin_ps[] = "ps";
+#define PROGFS_ENT__BIN_PS    PROGFS_ENTRY(_bin_ps, main_ps, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_PS
+#endif
+
+#if !defined CMD_PWD
+#define CMD_PWD true
+#endif
+#if CMD_PWD == true
+const char PROGMEM _bin_pwd[] = "pwd";
+#define PROGFS_ENT__BIN_PWD    PROGFS_ENTRY(_bin_pwd, main_pwd, FS_EXEC | FS_READ, 0)
+#else
+#define PROGFS_ENT__BIN_PWD
 #endif
 
 #if !defined CMD_CD
@@ -127,6 +147,8 @@ const char PROGMEM _bin_debug[] = "debug";
 #endif
 
 #define PROGFS_ENT_COREUTILS   PROGFS_ENT__BIN_LS \
+  PROGFS_ENT__BIN_PS \
+  PROGFS_ENT__BIN_PWD \
   PROGFS_ENT__BIN_CD \
   PROGFS_ENT__BIN_FREE \
   PROGFS_ENT__BIN_TIMES \

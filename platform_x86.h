@@ -2,7 +2,6 @@
 #define PLATFORM_X86_H
 
 #include <time.h>
-#include <limits.h>
 
 #ifdef __cplusplus
 extern "C"{
