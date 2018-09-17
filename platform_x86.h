@@ -3,6 +3,8 @@
 
 #include <time.h>
 
+extern uint8_t CONSOLE_ECHO;
+
 #ifdef __cplusplus
 extern "C"{
 #endif

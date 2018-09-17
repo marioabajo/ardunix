@@ -2,6 +2,8 @@
 
 #if defined(__x86_64__) || defined(__i386__)
 
+uint8_t CONSOLE_ECHO=0;
+
 void delay(long ms)
 {
   struct timespec d = {ms/1000, (ms%1000)*1000000};

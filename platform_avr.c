@@ -6,6 +6,8 @@
 
 #include <util/setbaud.h>
 
+uint8_t CONSOLE_ECHO=1;
+
 void uart_init(void)
 {
     UBRR0H = UBRRH_VALUE;

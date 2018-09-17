@@ -5,6 +5,7 @@
 
 extern unsigned int __heap_start;
 extern void *__brkval;
+extern uint8_t CONSOLE_ECHO;
 
 #ifdef __cplusplus
 extern "C"{

@@ -627,9 +627,12 @@ uint8_t getcmd(char buff[])
     // read input
     c = getchar();
     // local echo
-    if (c == '\r')
-      putchar('\n');
-    putchar(c);
+    if (CONSOLE_ECHO)
+    {
+	if (c == '\r')
+		putchar('\n');
+	putchar(c);
+    }
 
     // treat special charaters
     switch(c)

@@ -124,10 +124,12 @@ uint8_t insert_interpreter(FD fd, char *argv[])
 	char aux[PATH_MAX];
 
 	read(&fd, &aux, (uint8_t)PATH_MAX);
+	// trim the string if we found a \n, \r or space
 	while (i<PATH_MAX && aux[i] != ' ' && aux[i] != '\r' && aux[i] != '\n')
 		i++;
+
 	// end the interpreter string with a 0
-	aux[i] = 0;
+	aux[i++] = 0;
 	
 	// modify argv, so put first the interpreter, and second this script 
 	// filename
@@ -161,7 +163,7 @@ static int8_t __attribute__((noinline)) check_file(char *argv[], long *inode)
  *          ENOMEM    -> not enough memory
  */
 {
-	char fullpath[PATH_MAX], *aux;
+	char *pathok, aux[2];
 	uint8_t ret;
 	FD fd;
 	struct stat file;
@@ -171,19 +173,24 @@ static int8_t __attribute__((noinline)) check_file(char *argv[], long *inode)
 	if (argv == NULL || argv[0] == NULL)
 		return EINVNAME; // filename invalid
 
-	// If the filename looks like a full path, try to open it directly
+  // Verify the executable path, if it's a relative path, add PATH to it
 	if (argv[0][0] == '/')
-		aux = argv[0];
-	// If not, try to prepend the PATH variable to the filename and try to 
-	// open then 
+	{
+		if ((pathok = normalize_path(argv[0])) == NULL)
+			return EINVNAME;
+	}
 	else
 	{
-		snprintf_P(fullpath, PATH_MAX, PSTR(STR(PATH) "/%s"), argv[0]);
-		aux = fullpath;
+		if ((pathok = normalize_paths(PATH, argv[0])) == NULL)
+			return EINVNAME;
 	}
-	if (open(aux, 0, &fd) != 0)
+
+	if (open(pathok, 0, &fd) != 0)
 		return ENOTFOUND; // file not found
 
+  // free the variable name
+  free(pathok);
+  
 	// Check thath has the correct permissions 
 	fstat(&fd, &file);
 	if (!(file.st_mode & FS_EXEC))

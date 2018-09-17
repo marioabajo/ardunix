@@ -31,7 +31,7 @@
 #define PID_MAX 3       // max number of processes (proces 0 reserved for the scheduler)
 #define IFS ' '         // inter field separator
 // TODO: just one path at this moment
-#define PATH /bin       // fixed path
+#define PATH "/bin"     // fixed path
 #define HOME "/"        // fixed home
 
 #define STR_HELPER(x) #x
