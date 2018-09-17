@@ -4,6 +4,7 @@
 #include "sh.h"
 #include "kernel.h"
 #include "env.h"
+#include "fs.h"
 
 // Data types
 
@@ -40,26 +41,29 @@ typedef char token;
 #define TK_SC    19 // ;
 #define TK_PO    20 // (
 #define TK_PC    21 // )
+#define TK_CD    22 // cd
 
 #define END_OF_BLOCK(a) (a.pos == a.limit)
 #define END_OF_PBLOCK(a) (a->pos == a->limit)
 
 // Arrays with the shell tokens, values and other info
 
-const char PROGMEM c[] = "!{};\n\r()dofiifinforcasedoneelifelseesacthenuntilwhile";
-const token PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, TK_PO, TK_PC, \
-                            TK_DO, TK_FI, TK_IF, TK_IN, TK_FOR, TK_CASE, TK_DONE, TK_ELIF, \
-                            TK_ELSE, TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
+const char PROGMEM c[] = "!{};\n\r()dofiifincdforcasedoneelifelseesacthenuntilwhile";
+const token PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, \
+                            TK_PO, TK_PC, TK_DO, TK_FI, TK_IF, TK_IN, TK_CD, \
+                            TK_FOR, TK_CASE, TK_DONE, TK_ELIF, TK_ELSE, \
+                            TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
 // values grouped in three values: start, end, start_in_token_array
-const uint8_t PROGMEM d[] = {0, 8, 0, 8, 16, 8, 16, 19, 12, 19, 43, 13, 43, 53, 19};
+const uint8_t PROGMEM d[] = {0, 8, 0, 8, 18, 8, 18, 21, 13, 21, 45, 14, 45, 55, 20};
 /*  token string length:     \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
     values:                  |  |  \-->start in ta array
-                             |  \--> limit in c array
+                             |  \--> end in c array
                              \--> start in c array 
 */
 
 // Private function prototypes
 
+uint8_t eval_cd(block a, char *env[]);
 uint8_t syntax_if(block *a);
 uint8_t eval_if(block a, char *env[]);
 uint8_t eval_command(block a, char *env[]);
@@ -302,12 +306,20 @@ uint8_t str_to_argv(block a, char *dst, char *argv[], char *env[])
 {
   size_t i = 0;
   uint8_t len, j = 0;
+  char *ptr;
 
   // first, separate args and copy the string
   while (get_string(&a) && j < NCARGS - 1)
   {
+    ptr = a.p + a.pos;
+    // avoid copying parameters with only \n \r or ';'
+    if (ptr[0] == '\n' || ptr[0] == '\r' || ptr[0] == ';')
+    {
+      a.pos += a.len;
+      continue;
+    }
     // copy arg to dst
-    memcpy(dst, a.p + a.pos, a.len);
+    memcpy(dst, ptr, a.len);
     // point arg to dst
     argv[j++] = dst;
     // update dst to the end of the arg
@@ -320,7 +332,7 @@ uint8_t str_to_argv(block a, char *dst, char *argv[], char *env[])
   }
 
   // check if any arg is a variable and substitute
-  // TODO: Actually we only thread arguments that contain only the variable name
+  // TODO: Actually we only tread arguments that contains only the variable name
   //       not a mix of strings and variables in the same arg or inside quotes
   for (i = 0; i<j; i++)
   {
@@ -356,14 +368,14 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
   a.limit = limit;
 
   do
-	{
+  {
     get_string(&a);
     if (END_OF_BLOCK(a))
       break;
-		tok = str_to_token(a);
+    tok = str_to_token(a);
 
-		switch (tok)
-		{
+    switch (tok)
+    {
       // ignore new lines, carrier returns and semicolons
       case TK_CR:
       case TK_NL:
@@ -377,25 +389,29 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
         if ((error = syntax_if(&a)) > 0)
           break;
         // build the if block
-        //init_block(a, &b);
         b.p = a.p + a.pos;
         b.pos = 0;
         b.len = 0;
         b.limit = a.len;
         error = eval_if(b, env);
-				break;
+	break;
 
-			// for structure
-			case TK_FOR:
-				// TODO
-				break;
+      // for structure
+      case TK_FOR:
+        // TODO
+        break;
 #endif
+
+      // change directory command
+      case TK_CD:
+        extend_to_eol(&a);
+        error = eval_cd(a, env);
+        break;
 
       // a simple command followed by parameters until '\n' or ';'
       case false:
         extend_to_eol(&a);
         // build the command block
-        //init_block(a, &b);
         b.p = a.p + a.pos;
         b.pos = 0;
         b.len = 0;
@@ -403,10 +419,10 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
         error = eval_command(b, env);
         break;
 
-			default:
-				printf_P(PSTR("Syntax error: %s\n"), a.p + a.pos);
-				return 1;
-		}
+      default:
+        printf_P(PSTR("Syntax error: %s\n"), a.p + a.pos);
+        return 1;
+    }
     // advance cursor to the next block
     a.pos += a.len;
     a.len = 0;
@@ -414,9 +430,36 @@ uint8_t eval(char *cmd, size_t limit, char *env[])
     snprintf_P(ret, 3, PSTR("%d"), error);
     env_add(env, "?", ret);
         
-	} while (!error);
+  } while (!error);
 
-	return error;
+  return error;
+}
+
+uint8_t eval_cd(block a, char *env[])
+{
+	int8_t ret;
+	char *path;
+	char str[ARGMAX];
+	char *argv[NCARGS];
+
+	// transform string in parameters
+	str_to_argv(a, str, argv, env);
+
+	// if it has no parameters, just cd to home
+	if (argv[1] == NULL)
+		return chdir(HOME);
+
+	// take only the first parameter and normalize it
+	if (argv[1][0] == '/')
+		path = normalize_path(argv[1]);
+	else
+		path = normalize_paths(procs[current_proc].cwd, argv[1]);
+
+	// change directory
+	ret = chdir(path);
+	free(path);
+
+	return ret;
 }
 
 uint8_t eval_command(block a, char *env[])
@@ -683,7 +726,7 @@ uint8_t getcmd(char buff[])
 int8_t main_sh(char *argv[], char *env[])
 {
   // input line buffer
-  char line[ARGMAX];
+  char line[ARGMAX], *cwd;
   size_t len;
   uint8_t exit_flag = 1;
   int8_t result = 0;
@@ -699,14 +742,17 @@ int8_t main_sh(char *argv[], char *env[])
   }
 
   // Set Current Working Directory if doesn't exists
-  if (env_get(env, "CWD") == NULL)
-    env_add(env, "CWD", HOME);
+//  if (env_get(env, "CWD") == NULL)
+//    env_add(env, "CWD", HOME);
 
   // Loop until we exit cmd
   do
   {
     // show prompt
-    printf_P(PSTR("%s# "), env_get(env, "CWD"));
+    //printf_P(PSTR("%s# "), env_get(env, "CWD"));
+    cwd = getcwd(NULL, 0);
+    printf_P(PSTR("%s# "), cwd);
+    free(cwd);
 
     // Get command
     len = getcmd(line);

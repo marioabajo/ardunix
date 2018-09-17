@@ -56,16 +56,6 @@ const char PROGMEM _bin_pwd[] = "pwd";
 #define PROGFS_ENT__BIN_PWD
 #endif
 
-#if !defined CMD_CD
-#define CMD_CD true
-#endif
-#if CMD_CD == true
-const char PROGMEM _bin_cd[] = "cd";
-#define PROGFS_ENT__BIN_CD    PROGFS_ENTRY(_bin_cd, main_cd, FS_EXEC | FS_READ, 0)
-#else
-#define PROGFS_ENT__BIN_CD
-#endif
-
 #if !defined CMD_FREE
 #define CMD_FREE true
 #endif
@@ -149,7 +139,6 @@ const char PROGMEM _bin_debug[] = "debug";
 #define PROGFS_ENT_COREUTILS   PROGFS_ENT__BIN_LS \
   PROGFS_ENT__BIN_PS \
   PROGFS_ENT__BIN_PWD \
-  PROGFS_ENT__BIN_CD \
   PROGFS_ENT__BIN_FREE \
   PROGFS_ENT__BIN_TIMES \
   PROGFS_ENT__BIN_SET \

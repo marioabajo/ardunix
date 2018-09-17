@@ -173,7 +173,7 @@ static int8_t __attribute__((noinline)) check_file(char *argv[], long *inode)
 	if (argv == NULL || argv[0] == NULL)
 		return EINVNAME; // filename invalid
 
-  // Verify the executable path, if it's a relative path, add PATH to it
+	// Verify the executable path, if it's a relative path, add PATH to it
 	if (argv[0][0] == '/')
 	{
 		if ((pathok = normalize_path(argv[0])) == NULL)
@@ -188,8 +188,8 @@ static int8_t __attribute__((noinline)) check_file(char *argv[], long *inode)
 	if (open(pathok, 0, &fd) != 0)
 		return ENOTFOUND; // file not found
 
-  // free the variable name
-  free(pathok);
+	// free the variable name
+	free(pathok);
   
 	// Check thath has the correct permissions 
 	fstat(&fd, &file);

@@ -37,13 +37,14 @@ void ls_print_entry(uint8_t f, uint16_t size, const char *entry_name)
 int8_t main_ls(char *argv[])
 {
 	DIR dir;
-	// TODO: initialize fn with CWD env variable
-	char *fn = HOME;
+	char *fn, *cwd;
 	struct stat obj;
 	struct dirent *entry;
 	int8_t ret = 0;
 	uint8_t i = 1, _continue = 1;
 
+	cwd = getcwd(NULL, 0);
+	fn = cwd;
 	do
 	{
 		if (argv[i] == NULL)
@@ -74,6 +75,7 @@ int8_t main_ls(char *argv[])
 		i++;
 	} while (_continue);
 
+	free(cwd);
 	return ret;
 }
 
@@ -101,46 +103,6 @@ int8_t main_pwd(void)
 
 	puts(buf);
 	return 0;
-}
-
-int8_t main_cd(char *argv[], char *env[])
-{
-/*  char *cwd, *named = NULL;
-  struct stat file;
-  DIR dir;
-  uint8_t ret = 0;
-
-  if (env == NULL)
-    return 1; // No environment defined
-
-  // go to home
-  if (argv[1] == NULL)
-  {
-    env_add(env, "CWD", HOME);
-    return 0;
-  }
-  // absolute path
-  else if (argv[1][0] == '/')
-    named = realpath(argv[1], NULL);
-  // relative path
-  else
-    if ((named = realpath(argv[1], env_get(env, "CWD"))) == NULL)
-      return 5; // invalid path
-
-  // check permissions and type
-  if (stat(named, &file))
-    ret = 2; // directory not found
-  if (!(file.st_mode & FS_EXEC))
-    ret = 3; // permission denied
-  if (!(file.st_mode & FS_DIR))
-    ret = 4; // not a directory
-  
-  if (!ret)
-    env_add(env, "CWD", named);
-  if (named != argv[1])
-    free(named);
-  return ret;*/
-  return 0;
 }
 
 // Print free ram

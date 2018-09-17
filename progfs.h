@@ -31,6 +31,7 @@ extern "C" {
   int8_t progfs_open(const char *path, uint8_t flags, FD *fd);
   uint8_t progfs_read(FD *fd, void *buf, uint8_t size);
   uint8_t progfs_write(FD *fd, void *buf, uint8_t size);
+  int8_t progfs_chdir(const char *path);
 #ifdef __cplusplus
 }
 #endif

@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "progfs.h"
+#include "kernel.h"
 
-struct dirent * copy_dirent(DIR *d, uint8_t inode)
+static struct dirent * copy_dirent(DIR *d, uint8_t inode)
 /* Fill a dirent structure copyng the data from a DIR structure.
  * No allocation is done as the memory is already reserved inside 
  * DIR structure
@@ -275,7 +276,22 @@ uint8_t progfs_read(FD *fd, void *buf, uint8_t size)
 
 uint8_t progfs_write(FD *fd, void *buf, uint8_t size)
 {
-  return 1;  // we actually cannot support writing in arduino harvard architecture
+	return 1;  // we actually cannot support writing in arduino harvard architecture
 }
 
+int8_t progfs_chdir(const char *path)
+{
+	int8_t ret;
+	struct stat dir;
 
+	// Try to access it and recover information
+	if ((ret = progfs_stat(path, &dir)) != 0)
+		return ret; // see progfs_stat returns
+
+	// If we have acces and is a directory, then is valid
+	if ((dir.st_mode & FS_MASK_FILETYPE) != FS_DIR)
+		return ENOTDIR; // it's not a directory
+
+	strncpy(procs[current_proc].cwd, path, PATH_MAX);
+	return ret;
+}

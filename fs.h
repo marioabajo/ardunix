@@ -111,6 +111,7 @@ extern "C"{
   int8_t open(const char *path, uint8_t flags, FD *fd);
   uint8_t read(FD *fd, void *buf, uint8_t size);
   uint8_t write(FD *fd, void *buf, uint8_t size);
+  int8_t chdir(const char *path);
 #ifdef __cplusplus
 }
 #endif

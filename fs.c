@@ -42,10 +42,11 @@ char *normalize_path_l(const char *path, uint8_t len)
 	
 	while (i < len)
 	{
-		// threat path elements like './' or '../'
+		// threat path elements like './' or '../' or '..'
 		if (path[i] == '.')
 		{
-			if (path[i+1] == '.' && path[i+2] == '/')
+			if (path[i+1] == '.' && 
+			   (path[i+2] == '/' || path[i+2] == 0))
 			{
 				// go back one element
 				if (j > 0)
@@ -143,6 +144,18 @@ char *normalize_paths_l(const char *path1, uint8_t len1, const char *path2, uint
 	return path_export;
 }
 
+static char * sanitize_path(const char *path)
+{
+	char *newpath;
+
+	if (path[0] == '/')
+		newpath = normalize_path(path);
+	else
+		newpath = normalize_paths(procs[current_proc].cwd, path);
+
+	return newpath;
+}
+
 char *getcwd(char *buf, size_t size)
 {
 	char *ptr;
@@ -171,16 +184,8 @@ int8_t statvfs(const char* path, struct statvfs *buf)
 	int8_t ret;
 	char *pathok;
 
-	if (path[0] == '/')
-	{
-		if ((pathok = normalize_path(path)) == NULL)
-			return EINVNAME;
-	}
-	else
-	{
-		if ((pathok = normalize_paths(procs[current_proc].cwd, path)) == NULL)
-			return EINVNAME;
-	}
+	if ((pathok = sanitize_path(path)) == NULL)
+		return EINVNAME;
 
 	// TODO: actually we only support the internal FS
 	// TODO: HARDCODED!!!!
@@ -211,16 +216,8 @@ int8_t stat(const char *path, struct stat *buf)
 	int8_t ret;
 	char *pathok;
 
-	if (path[0] == '/')
-	{
-		if ((pathok = normalize_path(path)) == NULL)
-			return EINVNAME;
-	}
-	else
-	{
-		if ((pathok = normalize_paths(procs[current_proc].cwd, path)) == NULL)
-			return EINVNAME;
-	}
+	if ((pathok = sanitize_path(path)) == NULL)
+		return EINVNAME;
 
 	// TODO: virtual filesystem structure in process
 	ret = progfs_stat(pathok, buf);
@@ -236,16 +233,8 @@ int8_t opendir(const char *path, DIR *d)
 	int8_t ret;
 	char *pathok;
 
-	if (path[0] == '/')
-	{
-		if ((pathok = normalize_path(path)) == NULL)
-			return EINVNAME;
-	}
-	else
-	{
-		if ((pathok = normalize_paths(procs[current_proc].cwd, path)) == NULL)
-			return EINVNAME;
-	}
+	if ((pathok = sanitize_path(path)) == NULL)
+		return EINVNAME;
 
 	// TODO: virtual filesystem structure in process
 	ret = progfs_opendir(pathok, d);
@@ -279,16 +268,8 @@ int8_t open(const char *path, uint8_t flags, FD *fd)
 	int8_t ret;
 	char *pathok;
 
-	if (path[0] == '/')
-	{
-		if ((pathok = normalize_path(path)) == NULL)
-			return EINVNAME;
-	}
-	else
-	{
-		if ((pathok = normalize_paths(procs[current_proc].cwd, path)) == NULL)
-			return EINVNAME;
-	}
+	if ((pathok = sanitize_path(path)) == NULL)
+		return EINVNAME;
 
 	// TODO: virtual filesystem structure in process
 	ret = progfs_open(pathok, flags, fd);
@@ -316,4 +297,19 @@ int8_t fstat(FD *fd, struct stat *buf)
 	return progfs_fstat(fd, buf);
 }
 
+int8_t chdir(const char *path)
+{
+	int8_t ret;
+	char *pathok;
 
+	if ((pathok = sanitize_path(path)) == NULL)
+		return EINVNAME;
+
+	// TODO: virtual filesystem structure in process
+	ret = progfs_chdir(pathok);
+
+	free(pathok);
+
+	return ret;
+
+}

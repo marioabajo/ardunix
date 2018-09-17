@@ -9,7 +9,6 @@
 //#define CMD_LS false
 //#define CMD_PS false
 //#define CMD_PWD false
-#define CMD_CD false
 //#define CMD_SH false
 //#define CMD_SH_SIMPLE true
 //#define CMD_FREE false

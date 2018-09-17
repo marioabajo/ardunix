@@ -9,7 +9,6 @@ extern "C"{
   int8_t main_ls(char *argv[]);
   int8_t main_ps(void);
   int8_t main_pwd(void);
-  int8_t main_cd(char *argv[], char *env[]);
   int8_t main_free (void);
   int8_t main_times (char *argv[]);
   int8_t main_set(char *argv[], char *env[]);
