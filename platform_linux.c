@@ -1,6 +1,7 @@
 #include "platform.h"
 
-#if defined(__x86_64__) || defined(__i386__)
+//##if defined(__x86_64__) || defined(__i386__) || defined(__ARM__)
+#if defined(__linux__)
 
 uint8_t CONSOLE_ECHO=0;
 

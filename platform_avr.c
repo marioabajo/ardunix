@@ -60,10 +60,10 @@ char uart_getchar(FILE *stream)
   return f;
 }*/
 
-FILE *fopen(const char *path, const char *mode)
+/*FILE *fopen(const char *path, const char *mode)
 {
   // TODO
   return NULL;
-}
+}*/
 
 #endif

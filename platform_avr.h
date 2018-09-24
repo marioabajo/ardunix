@@ -13,8 +13,8 @@ extern "C"{
   void uart_init(void);
   void uart_putchar(char c, FILE *stream);
   char uart_getchar(FILE *stream);
-  FILE *fmemopen(void *buf, size_t size, const char *mode);
-  FILE *fopen(const char *path, const char *mode);
+  //FILE *fmemopen(void *buf, size_t size, const char *mode);
+  //FILE *fopen(const char *path, const char *mode);
 #ifdef __cplusplus
 }
 #endif

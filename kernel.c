@@ -8,7 +8,7 @@
 struct proc procs[PID_MAX];
 int8_t current_proc = 0; // the kernel uses the PID = 0 to start other processes
 
-int8_t proc_allocate(void)
+static int8_t proc_allocate(void)
 {
 	int8_t i = 1;
 
@@ -24,7 +24,7 @@ int8_t proc_allocate(void)
 	return i;
 }
 
-void proc_clean(int8_t pid)
+static void proc_clean(int8_t pid)
 {
 	procs[pid].state = 0;
 	procs[pid].name = NULL;
@@ -118,7 +118,7 @@ int8_t exec(const char *argv[])
   return execve(argv, NULL);
 }
 
-uint8_t insert_interpreter(FD fd, char *argv[])
+static uint8_t insert_interpreter(FD fd, char *argv[])
 {
 	uint8_t i=0;
 	char aux[PATH_MAX];

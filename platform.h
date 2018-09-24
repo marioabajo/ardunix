@@ -66,8 +66,9 @@
 /*
  * PC platform
  */
-#elif defined(__x86_64__) || defined(__i386__)
-  #include "platform_x86.h"
+//##elif defined(__x86_64__) || defined(__i386__) || defined(__arm__)
+#elif defined(__linux__)
+  #include "platform_linux.h"
 #endif
 
 #endif
