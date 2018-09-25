@@ -54,6 +54,7 @@
 #define EADDRNOTAVAIL -11 // Address not available
 #define ENOTDIR   -12  // Not a directory
 #define EISDIR    -13  // Is a directory
+#define EINVAL    -14  // Invalid value
 
 /*
  *  Arduino platform

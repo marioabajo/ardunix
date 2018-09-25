@@ -30,19 +30,20 @@
 #define TK_PO    20 // (
 #define TK_PC    21 // )
 #define TK_CD    22 // cd
+#define TK_EXIT  23 // exit
 
 #define END_OF_BLOCK(a) (a.pos == a.limit)
 #define END_OF_PBLOCK(a) (a->pos == a->limit)
 
 // Arrays with the shell tokens, values and other info
 
-const char PROGMEM c[] = "!{};\n\r()dofiifincdforcasedoneelifelseesacthenuntilwhile";
+const char PROGMEM c[] = "!{};\n\r()dofiifincdforcasedoneelifelseesacthenexituntilwhile";
 const uint8_t PROGMEM ta[] = {TK_EXCL, TK_BROP, TK_BRCL, TK_SC, TK_NL, TK_CR, \
                               TK_PO, TK_PC, TK_DO, TK_FI, TK_IF, TK_IN, TK_CD, \
                               TK_FOR, TK_CASE, TK_DONE, TK_ELIF, TK_ELSE, \
-                              TK_ESAC, TK_THEN, TK_UNTIL, TK_WHILE};
+                              TK_ESAC, TK_THEN, TK_EXIT, TK_UNTIL, TK_WHILE};
 // values grouped in three values: start, end, start_in_token_array
-const uint8_t PROGMEM d[] = {0, 8, 0, 8, 18, 8, 18, 21, 13, 21, 45, 14, 45, 55, 20};
+const uint8_t PROGMEM d[] = {0, 8, 0, 8, 18, 8, 18, 21, 13, 21, 49, 14, 49, 59, 21};
 /*  token string length:     \_ 1 _/  \__ 2 _/  \___ 3 __/  \___ 4 __/  \___ 5 __/
     values:                  |  |  \-->start in ta array
                              |  \--> end in c array
@@ -50,11 +51,11 @@ const uint8_t PROGMEM d[] = {0, 8, 0, 8, 18, 8, 18, 21, 13, 21, 45, 14, 45, 55, 
 */
 
 // Private function prototypes
-static int8_t eval(char *cmd, char *env[]);
+static int8_t eval(char *cmd, char *env[], uint8_t *quit);
 
 // Functions
 
-static uint8_t is_char(char c)
+static uint8_t is_alpha(char c)
 /* Check if a byte is a charater, distinguish between upper and lower case
  *  
  * Returns: 0 -> is not a char
@@ -69,7 +70,7 @@ static uint8_t is_char(char c)
 	return false;
 }
 
-static uint8_t is_number(char c)
+static uint8_t is_digit(char c)
 /* Check if a byte is a number
  * 
  * Returns: 0 -> not a number
@@ -80,6 +81,21 @@ static uint8_t is_number(char c)
 		return true;
 	return false;
 }
+
+static uint8_t tok_is_separator(uint8_t t)
+{
+	if (t == TK_NL || t == TK_CR || t == TK_SC)
+		return true;
+	return false;
+}
+
+static uint8_t is_separator(char c)
+{
+	if (c == '\n' || c == '\r' || c == ';')
+		return true;
+	return false;
+}
+
 
 static uint8_t is_varname_ok(char *t, size_t n)
 /* Check if a string forms a valid variable name or not.
@@ -93,19 +109,19 @@ static uint8_t is_varname_ok(char *t, size_t n)
 {
 	size_t i = 0;
 
-  // empty var names are not welcome
-  if (n == 0)
-    return false;
+	// empty var names are not welcome
+	if (n == 0)
+		return false;
 
-  // Check for special variables (1 byte length)
-  if ((n == 1) && (t[0] == '?' || t[0] == '$'))
-    return 2;
+	// Check for special variables (1 byte length)
+	if ((n == 1) && (t[0] == '?' || t[0] == '$'))
+		return 2;
 
-  // A variable should contain just characters, numbers 
-  // (but not start with one) and underscores
+	// A variable should contain just characters, numbers 
+	// (but not start with one) and underscores
 	while (i < n)
 	{
-		if (! (is_char(t[i]) || (is_number(t[i]) && i) || t[i] == '_'))
+		if (! (is_alpha(t[i]) || (is_digit(t[i]) && i) || t[i] == '_'))
 			return false;
 		i++;
 	}
@@ -120,10 +136,10 @@ static uint8_t is_var(char *t, size_t n)
  *          2 -> it's not a valid variable name
  */
 {
-  if (n > 1 && t[0] == '$' && is_varname_ok(t + 1, n - 1))
-    return true;
+	if (n > 1 && t[0] == '$' && is_varname_ok(t + 1, n - 1))
+		return true;
 
-  return false;
+	return false;
 }
 
 static uint8_t is_var_assign(char *t, size_t n)
@@ -227,14 +243,10 @@ static size_t extend_to_eol(char *str, size_t len)
 
 	while (_exit)
 	{
-		switch (str[i])
+		if (is_separator(str[i]))
 		{
-			case 0:
-			case '\n':
-			case '\r':
-			case ';':
-				_exit = 0;
-				continue;
+			_exit = 0;
+			continue;
 		}
 		i++;
 	}
@@ -289,7 +301,7 @@ static uint8_t str_to_argv(char *input, size_t len, char *argstr, char *argv[], 
 	// first, separate args and copy the string
 	while ((len = get_string(input, &str)) > 0 && j < NCARGS -1 )
 	{
-		if (str[0] == '\n' || str[0] == '\r' || str[0] == ';')
+		if (is_separator(str[0]))
 		{
 			// advance input pointer
 			input = str + len;
@@ -347,14 +359,13 @@ static uint8_t extend_to_else_or_fi(char *cmd, size_t *pos)
 				count++;
 				break;
 			case TK_ELSE:
-				if (!count && \
-				(prev == TK_NL || prev == TK_CR || prev == TK_SC))
+				if (!count && tok_is_separator(prev))
 					found = 2;
 				break;
 			case TK_FI:
 				if (count)
 					count--;
-				else if (prev == TK_NL || prev == TK_CR || prev == TK_SC)
+				else if (tok_is_separator(prev))
 					found = 3;
 				break;      
 		}
@@ -377,7 +388,7 @@ static uint8_t syntax_if(char *cmd)
 {
 	uint8_t tok = 0;
 	uint8_t found = 0;
-	uint8_t state = 1;
+	uint8_t state = 0;
 	uint8_t error = 0;
 	size_t i;
 	char *str;
@@ -385,16 +396,17 @@ static uint8_t syntax_if(char *cmd)
 	while (state < 8)
 	{
 		i = get_string(cmd, &str);
-		if (state != 1)
-			tok = get_token(str, i);
+		tok = get_token(str, i);
 
 		switch (state)
 		{
+			case 0: // jump the if
+				break;
 			case 1: // condition
 				i = extend_to_eol(str, i);
 				break;
 			case 2: // check new line or separator
-				if (tok != TK_NL && tok != TK_CR && tok != TK_SC)
+				if (! tok_is_separator(tok))
 					error = 1;
 				break;
 			case 3: // check then token
@@ -402,14 +414,19 @@ static uint8_t syntax_if(char *cmd)
 					error = 1;
 				break;
 			case 4: // jump then block
-			case 6: // jump else block
 				found = extend_to_else_or_fi(str, &i);
-				if (!found)
-					error = 1;
+				// if there is no "else" go to fi
+				if (found != 2)
+					state += 2;
 				break;
 			case 5:
 				// check else token
 				if (tok != TK_ELSE)
+					error = 1;
+				break;
+			case 6: // jump else block
+				found = extend_to_else_or_fi(str, &i);
+				if (!found)
 					error = 1;
 				break;
 			case 7: // check fi token
@@ -426,27 +443,25 @@ static uint8_t syntax_if(char *cmd)
 			return 1;
 		}
 		cmd = str + i;
-		if (state == 4 && found != 2)
-			state = 7;
-		else
-			state++;
+		state++;
 	}
 
 	return 0;
 }
 
-static uint8_t eval_if(char *cmd, size_t *len, char *env[])
+static int8_t eval_if(char *cmd, size_t *len, char *env[])
 {
 	uint8_t found = 0;
 	uint8_t cond = 0;
-	uint8_t error = 0;
+	int8_t error = 0;
 	uint8_t state = 0;
+	uint8_t quit = 0;
 	size_t i = *len;
 	char *str, *save, aux;
 	
 	save = cmd;
 
-	while (state < 8)
+	while (state < 8 && ! quit)
 	{
 		i = get_string(cmd, &str);
 
@@ -458,7 +473,7 @@ static uint8_t eval_if(char *cmd, size_t *len, char *env[])
 				i = extend_to_eol(str, i);
 				aux = str[i];
 				str[i] = 0;
-				cond = eval(str, env);
+				cond = eval(str, env, &quit);
 				str[i] = aux;
 				break;
 			case 2: // jump the new line/semi colon character
@@ -470,7 +485,7 @@ static uint8_t eval_if(char *cmd, size_t *len, char *env[])
 				{
 					aux = str[i];
 					str[i] = 0;
-					error = eval(str, env);
+					error = eval(str, env, &quit);
 					str[i] = aux;
 				}
 				// if we don't found an else, skip to the fi
@@ -484,7 +499,7 @@ static uint8_t eval_if(char *cmd, size_t *len, char *env[])
 				{
 					aux = str[i];
 					str[i] = 0;
-					error = eval(str, env);
+					error = eval(str, env, &quit);
 					str[i] = aux;
 				}
 			case 7:
@@ -514,16 +529,32 @@ static int8_t eval_cd(char *str, size_t len, char *env[])
 		return chdir(HOME);
 
 	// take only the first parameter and normalize it
-	if (argv[1][0] == '/')
-		path = normalize_path(argv[1]);
-	else
-		path = normalize_paths(procs[current_proc].cwd, argv[1]);
+	path = sanitize_path(argv[1]);
 
 	// change directory
 	ret = chdir(path);
 	free(path);
 
 	return ret;
+}
+
+static int8_t eval_exit(char *str, size_t len, char *env[])
+{
+	int ret = 0;
+	char args[ARGMAX];
+	char *argv[NCARGS];
+
+	// transform string in parameters
+	str_to_argv(str, len, args, argv, env);
+
+	if (argv[1] != NULL)
+	{
+		ret = atoi(argv[1]);
+		if (ret > 127 || ret < 0 || (ret == 0 && argv[1][0] != '0'))
+			ret = EINVAL;
+	}
+
+	return (int8_t)ret;
 }
 
 static int8_t eval_command(char *str, size_t len, char *env[])
@@ -550,17 +581,17 @@ static int8_t eval_command(char *str, size_t len, char *env[])
 	return error;  
 }
 
-static int8_t eval(char *cmd, char *env[])
+static int8_t eval(char *cmd, char *env[], uint8_t *quit)
 {
 	size_t len;
-	uint8_t tok;
+	uint8_t tok = 0;
 	int8_t error = 0;
 	char *str, *input;
 	char retcode[4];
 	
 	input = cmd;
 	
-	while ((len = get_string(input, &str)) > 0)
+	while ((len = get_string(input, &str)) > 0 && ! *quit)
 	{
 		// extract the token
 		tok = get_token(str, len);
@@ -593,6 +624,13 @@ static int8_t eval(char *cmd, char *env[])
 			case TK_CD:
 				len = extend_to_eol(str, len);
 				error = eval_cd(str, len, env);
+				break;
+
+			case TK_EXIT:
+				len = extend_to_eol(str, len);
+				error = eval_exit(str, len, env);
+				if (error >= 0)
+					*quit = 1;
 				break;
 
 			// a simple command followed by parameters until '\n' or ';'
@@ -688,7 +726,7 @@ int8_t main_sh(char *argv[], char *env[])
   // input line buffer
   char line[ARGMAX], *cwd;
   size_t len;
-  uint8_t exit_flag = 1;
+  uint8_t quit = 0;
   int8_t result = 0;
 
   if (argv[1] != NULL)
@@ -701,15 +739,10 @@ int8_t main_sh(char *argv[], char *env[])
     return 0;
   }
 
-  // Set Current Working Directory if doesn't exists
-//  if (env_get(env, "CWD") == NULL)
-//    env_add(env, "CWD", HOME);
-
   // Loop until we exit cmd
   do
   {
     // show prompt
-    //printf_P(PSTR("%s# "), env_get(env, "CWD"));
     cwd = getcwd(NULL, 0);
     printf_P(PSTR("%s# "), cwd);
     free(cwd);
@@ -719,12 +752,12 @@ int8_t main_sh(char *argv[], char *env[])
     if (!len)
       continue;
 
-    result = eval(line, env);
+    result = eval(line, env, &quit);
     // For debuging
     printf_P(PSTR("Result: %d\n"), result);
 
   // TODO: Implement a decent exit mechanism
-  } while(exit_flag);
+  } while(!quit);
 
   return result;
 }

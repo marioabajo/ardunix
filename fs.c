@@ -144,7 +144,7 @@ char *normalize_paths_l(const char *path1, uint8_t len1, const char *path2, uint
 	return path_export;
 }
 
-static char * sanitize_path(const char *path)
+char * sanitize_path(const char *path)
 {
 	char *newpath;
 
@@ -166,6 +166,7 @@ char *getcwd(char *buf, size_t size)
 
 	if (buf == NULL)
 	{
+		//return procs[current_proc].cwd;
 		if ((ptr = (char *)malloc(total)) == NULL)
 			return NULL;
 		memcpy(ptr, procs[current_proc].cwd, total);

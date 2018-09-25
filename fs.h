@@ -99,6 +99,7 @@ extern "C"{
   char *normalize_path_l(const char *path, uint8_t len);
   char *normalize_paths(const char *path1, const char* path2);
   char *normalize_paths_l(const char *path1, uint8_t len1, const char *path2, uint8_t len2);
+  char *sanitize_path(const char *path);
   char *getcwd(char *buf, size_t size);
   int8_t statvfs(const char* path, struct statvfs *buf);
   int8_t fstatvfs(FD *fd, struct statvfs *buf);
