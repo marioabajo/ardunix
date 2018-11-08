@@ -51,7 +51,7 @@ const uint8_t PROGMEM d[] = {0, 8, 0, 8, 18, 8, 18, 21, 13, 21, 49, 14, 49, 59, 
 */
 
 // Private function prototypes
-static int8_t eval(char *cmd, char *env[], uint8_t *quit);
+static int8_t eval(char *cmd, char *env[], size_t limit, uint8_t *quit);
 
 // Functions
 
@@ -284,7 +284,7 @@ static uint8_t get_token(char *str, size_t len)
 	return false;
 }
 
-static uint8_t str_to_argv(char *input, size_t len, char *argstr, char *argv[], char *env[])
+static uint8_t str_to_argv(char *input, size_t limit, char *argstr, char *argv[], char *env[])
 /* Given a block (string), an allocated string with size ARGMAX, an array of arg values
  * of size NCARGS and an environment array; split the block string, copy the args to
  * dst and fill the argv array and if an argument is a variable, substitute it
@@ -294,12 +294,14 @@ static uint8_t str_to_argv(char *input, size_t len, char *argstr, char *argv[], 
  */
 {
 
-	size_t i = 0;
+	size_t i = 0, len;
 	uint8_t j = 0;
-	char *str;
+	char *str, *save;
+	
+	save = input;
 
 	// first, separate args and copy the string
-	while ((len = get_string(input, &str)) > 0 && j < NCARGS -1 )
+	while ((len = get_string(input, &str)) > 0 && j < NCARGS -1 && input <= save + limit )
 	{
 		if (is_separator(str[0]))
 		{
@@ -336,7 +338,29 @@ static uint8_t str_to_argv(char *input, size_t len, char *argstr, char *argv[], 
 	return j;
 }
 
-static uint8_t extend_to_else_or_fi(char *cmd, size_t *pos)
+static uint8_t find_token(uint8_t target, char *cmd, size_t *pos)
+{
+	size_t i;
+	char *str, *save;
+	uint8_t tok;
+	
+	save = cmd;
+
+	while ((i = get_string(cmd, &str)) > 0)
+	{
+		// DEBUG
+		//printf("DEBUG: find: %d %d %.*s\n", count, i, i, str);
+		tok = get_token(str, i);
+		switch(tok)
+		{
+			case TK_DO:
+				break;
+		}
+		cmd = str + i;
+	}
+}
+
+static uint8_t extend_block(uint8_t start_tok, char *cmd, size_t *pos)
 {
 	uint8_t found = 0;
 	uint8_t count = 0;
@@ -347,27 +371,51 @@ static uint8_t extend_to_else_or_fi(char *cmd, size_t *pos)
 
 	save = cmd;
 
-	// search for "if" "else" of "fi" until found or until end of block
+	// search for "done" until found or until end of block
 	while ((i = get_string(cmd, &str)) > 0)
 	{
 		// DEBUG
-		//printf("DEBUG: find: %d %.*s\n", i, i, str);
+		//printf("DEBUG: find: %d %d %.*s\n", count, i, i, str);
 		tok = get_token(str, i);
 		switch(tok)
 		{
-			case TK_IF:  // found an anidated if, look for the fi
-				count++;
+			case TK_DO:  // found an anidated loop
+				if (start_tok == TK_DO)
+					count++;
 				break;
+			case TK_IF:
+				if (start_tok == TK_IF)
+					count++;
+				break;
+			case TK_DONE:
+				if (start_tok != TK_DO)
+					break;
+				if (count)
+					count--;
+				else if (tok_is_separator(prev))
+					found = 1;
+				break;
+			case TK_ELIF:
 			case TK_ELSE:
+				if (start_tok != TK_IF)
+					break;
 				if (!count && tok_is_separator(prev))
-					found = 2;
+				{
+					if (tok == TK_ELIF)
+						found = 1;
+					else // TK_ELSE
+						found = 2;
+				}
 				break;
 			case TK_FI:
+				if (start_tok != TK_IF)
+					break;
 				if (count)
 					count--;
 				else if (tok_is_separator(prev))
 					found = 3;
 				break;      
+
 		}
 		if (!found)
 		{
@@ -380,8 +428,12 @@ static uint8_t extend_to_else_or_fi(char *cmd, size_t *pos)
 			break;
 		}
 	}
-
+	
+	// DEBUG
+	//printf("DEBUG: find result %d %d %.*s\n", found, i, i, str);
+	
 	return found;
+
 }
 
 static uint8_t syntax_if(char *cmd)
@@ -414,7 +466,7 @@ static uint8_t syntax_if(char *cmd)
 					error = 1;
 				break;
 			case 4: // jump then block
-				found = extend_to_else_or_fi(str, &i);
+				found = extend_block(TK_IF, str, &i);
 				// if there is no "else" go to fi
 				if (found != 2)
 					state += 2;
@@ -425,7 +477,7 @@ static uint8_t syntax_if(char *cmd)
 					error = 1;
 				break;
 			case 6: // jump else block
-				found = extend_to_else_or_fi(str, &i);
+				found = extend_block(TK_IF, str, &i);
 				if (!found)
 					error = 1;
 				break;
@@ -457,7 +509,7 @@ static int8_t eval_if(char *cmd, size_t *len, char *env[])
 	uint8_t state = 0;
 	uint8_t quit = 0;
 	size_t i = *len;
-	char *str, *save, aux;
+	char *str, *save;
 	
 	save = cmd;
 
@@ -471,42 +523,184 @@ static int8_t eval_if(char *cmd, size_t *len, char *env[])
 				break;
 			case 1: // get the condition
 				i = extend_to_eol(str, i);
-				aux = str[i];
-				str[i] = 0;
-				cond = eval(str, env, &quit);
-				str[i] = aux;
+				cond = eval(str, env, i, &quit);
+				//printf("DEBUG eval_if: cond=%d\n",cond);
 				break;
 			case 2: // jump the new line/semi colon character
 			case 3: // now we need the then
 				break;
 			case 4: // process the "then" part
-				found = extend_to_else_or_fi(str, &i);
+				found = extend_block(TK_IF, str, &i);
 				if (!cond)
-				{
-					aux = str[i];
-					str[i] = 0;
-					error = eval(str, env, &quit);
-					str[i] = aux;
-				}
+					error = eval(str, env, i, &quit);
 				// if we don't found an else, skip to the fi
 				if (found != 2)
 					state += 2;
 			case 5:
 				break; // read the "else"
 			case 6: // if we have an "else" part, limit it and run it
-				extend_to_else_or_fi(str, &i);
+				extend_block(TK_IF, str, &i);
 				if (cond)
-				{
-					aux = str[i];
-					str[i] = 0;
-					error = eval(str, env, &quit);
-					str[i] = aux;
-				}
-			case 7:
+					error = eval(str, env, i, &quit);
+			case 7:	// jump the fi
 				break;
 		}
 		// DEBUG
 		//printf("DEBUG eval_if: %d %d %.*s\n", state, i, i, str);
+		cmd = str + i;
+		state++;
+	}
+	*len = cmd - save;
+	return error;
+}
+
+static uint8_t syntax_for(char *cmd)
+{
+	uint8_t tok = 0;
+	uint8_t state = 0;
+	uint8_t error = 0;
+	size_t i;
+	char *str;
+
+	while (state < 8)
+	{
+		i = get_string(cmd, &str);
+		tok = get_token(str, i);
+
+		switch (state)
+		{
+			case 0: // jump the if
+				break;
+			case 1: // the variable name
+				if (! is_varname_ok(str, i))
+					error = 1;
+				break;
+			case 2: // the optional "in"
+				if (tok == TK_IN)
+					;
+				else if (tok == TK_DO)
+					state += 3;
+				else
+					error = 1;
+				break;
+			case 3: // the values
+				i = extend_to_eol(str, i);
+				break;
+			case 4: // check new line or separator
+				if (! tok_is_separator(tok))
+					error = 1;
+				break;
+			case 5: // "do"
+				if (tok != TK_DO)
+					error = 1;
+				break;
+			case 6: // the instructions
+				if (! extend_block(TK_DO, str, &i))
+					error = 1;	
+				break;
+			case 7: // done
+				if (tok != TK_DONE)
+					error = 1;
+				break;
+		}
+		// DEBUG
+		//printf("DEBUG: %d tok: %d\n", state, tok);
+
+		if (error)
+		{
+			printf_P(PSTR("Error in FOR statement, pos: %s\n"), cmd);
+			return 1;
+		}
+		cmd = str + i;
+		state++;
+	}
+
+	return 0;
+}
+
+static int8_t eval_for(char *cmd, size_t *len, char *env[])
+{
+	uint8_t tok = 0;
+	int8_t error = 0;
+	uint8_t state = 0;
+	uint8_t quit = 0;
+	size_t i = *len, j;
+	char *str, *save, *var, *loop, *values, *actual;
+	
+	save = cmd;
+	values = NULL;
+	loop = NULL;
+
+	while (state < 8 && ! quit)
+	{
+		i = get_string(cmd, &str);
+
+		switch (state)
+		{
+			case 0: // jump the for
+				break;
+			case 1: // the variable name
+				str[i] = 0;
+				var = str;
+				i++;
+				//DEBUG: printf("DEBUG var: \"%s\"\n", var);
+			case 2: // the optional "in"
+				tok = get_token(str, i);
+				if (loop == NULL)
+					loop = str + i;
+				if (tok == TK_IN)
+					;
+				else if (tok == TK_DO)
+				{
+					/*positional++;
+					if (argv[positional] == NULL)
+					{
+						extend_block(TK_DO, str,&i);
+						state = 6;
+					}
+					else
+					{
+						env_add(env, var, argv[positional]);
+						state += 3;
+					}*/
+				}
+				break;
+			case 3: // the values
+				if (values == NULL)
+					values = str;
+				j = get_string(values, &actual);
+				//DEBUG: printf("DEBUG values: %d \"%.*s\"\n", j, j, actual);
+				if (j == 0 || is_separator(actual[0])) // no more values
+				{
+					i = extend_to_eol(str, i);
+					i = get_string(str + i, &str); // read the new line separator
+					i = get_string(str + i, &str); // read the "do"
+					str += i;
+					extend_block(TK_DO, str, &i);
+					state = 6;
+				}
+				else
+				{
+					env_add_l(env, var, strlen(var), actual, j);
+					values = actual + j;
+					i = extend_to_eol(str, i);
+				}
+			case 4: // check new line or separator
+			case 5: // "do"
+				break;
+			case 6: // the instructions
+				extend_block(TK_DO, str, &i);
+				//DEBUG: printf("DEBUG do: %d \"%.*s\"\n", i, i, str);
+				error = eval(str, env, i, &quit);
+				str = loop;
+				i = 0;
+				state = 1; 
+				break;
+			case 7: // done
+				break;
+		}
+		// DEBUG
+		//printf("DEBUG eval_for: %d %d %.*s\n", state, i, i, str);
 		cmd = str + i;
 		state++;
 	}
@@ -581,18 +775,22 @@ static int8_t eval_command(char *str, size_t len, char *env[])
 	return error;  
 }
 
-static int8_t eval(char *cmd, char *env[], uint8_t *quit)
+static int8_t eval(char *cmd, char *env[], size_t limit, uint8_t *quit)
 {
 	size_t len;
 	uint8_t tok = 0;
 	int8_t error = 0;
 	char *str, *input;
 	char retcode[4];
-	
+
 	input = cmd;
-	
+
 	while ((len = get_string(input, &str)) > 0 && ! *quit)
 	{
+		// If the limit is stablished, check it
+		if (limit > 0 && str + len > cmd + limit)
+			break;
+
 		// extract the token
 		tok = get_token(str, len);
 		//DEBUG
@@ -613,11 +811,14 @@ static int8_t eval(char *cmd, char *env[], uint8_t *quit)
 				if ((error = syntax_if(str)) > 0)
 					break;
 				error = eval_if(str, &len, env);
+				//printf("DEBUG: \"%.*s\"\n", len, str);
 				break;
 
 			// for structure
 			case TK_FOR:
-				// TODO
+				if ((error = syntax_for(str)) > 0)
+					break;
+				error = eval_for(str, &len, env);
 				break;
 #endif
 
@@ -752,7 +953,7 @@ int8_t main_sh(char *argv[], char *env[])
     if (!len)
       continue;
 
-    result = eval(line, env, &quit);
+    result = eval(line, env, len, &quit);
     // For debuging
     printf_P(PSTR("Result: %d\n"), result);
 

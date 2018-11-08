@@ -40,30 +40,4 @@ char uart_getchar(FILE *stream)
     return UDR0;
 }
 
-/*  WARNING: this is out of warranty as the FILE structure may change
- *           without advise in future arduino versions.
- */
-/*FILE *fmemopen(void *buf, int size, const char *mode)
-{
-  FILE *f;
-
-  if ((f = malloc(sizeof(FILE))) == NULL)
-    return NULL;
-
-  f->buf = buf;
-  f->size = size;
-  f->len = 0;
-  f->puf = NULL;   // TODO
-  f->get = NULL;   // TODO
-  f->udata = NULL; // TODO
-
-  return f;
-}*/
-
-/*FILE *fopen(const char *path, const char *mode)
-{
-  // TODO
-  return NULL;
-}*/
-
 #endif
