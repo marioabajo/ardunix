@@ -27,8 +27,47 @@ static int8_t proc_allocate(void)
 static void proc_clean(int8_t pid)
 {
 	procs[pid].state = 0;
+	free(procs[pid].name);
+	procs[pid].ppid = 0;
 	procs[pid].name = NULL;
-	procs[pid].cwd[0] = '0';
+	procs[pid].cwd = NULL;
+}
+
+static int8_t proc_start(const char *name)
+{
+	uint8_t len;
+	int8_t pid;
+
+	// Allocate a proccess id
+	if ((pid = proc_allocate()) == ENOPID)
+		return ENOPID;
+
+	// fill process data
+	len = strlen(name);
+	if ((procs[pid].name = malloc(len)) == NULL)
+		return ENOMEM;
+	memcpy(procs[pid].name, name, len);
+	procs[pid].name = NULL;
+	procs[pid].ppid = current_proc;
+	procs[pid].cwd = procs[current_proc].cwd;
+	procs[pid].inherited.cwd = 1;
+
+	// change running status of the current process
+	procs[current_proc].state = PROC_STOP;
+	current_proc = pid;
+	procs[pid].state = PROC_RUN;
+
+	return 0;
+}
+
+static void proc_stop(void)
+{
+	int8_t pid = current_proc;
+	
+	// free process
+	current_proc = procs[pid].ppid;
+	proc_clean(pid);
+	procs[current_proc].state = PROC_RUN;
 }
 
 int8_t init_proc(void)
@@ -38,12 +77,16 @@ int8_t init_proc(void)
 	// clean proc array execpt pid 0
 	for (i=1; i < PID_MAX; i++)
 		proc_clean(i);
+
+	if ((procs[0].cwd = malloc(PATH_MAX)) == NULL)
+		return ENOMEM;
 	
 	// fill pid 0 data
-	procs[0].state = 2;
+	procs[0].state = PROC_RUN;
 	procs[0].name = NULL;
 	procs[0].cwd[0] = '/';
 	procs[0].cwd[1] = 0;
+	procs[0].inherited.cwd = 0;
 	
 	return 0;
 }
@@ -191,7 +234,7 @@ static int8_t __attribute__((noinline)) check_file(char *argv[], long *inode)
 	// free the variable name
 	free(pathok);
   
-	// Check thath has the correct permissions 
+	// Check that has the correct permissions 
 	fstat(&fd, &file);
 	if (!(file.st_mode & FS_EXEC))
 		return EPERM; // bad permissions
@@ -236,7 +279,7 @@ int8_t execve(const char *argv[], char *envp[])
  *          -6  -> not enough memory
  */
 {
-	int8_t  ret, cleanenv = 0, pid, oldpid;
+	int8_t  ret, cleanenv = 0;
 	long    inode;
 
 	// Check file path and permissions
@@ -264,20 +307,10 @@ int8_t execve(const char *argv[], char *envp[])
 			memset(envp, 0, ENV_MAX * sizeof(char *));
 		}
 
-		// Allocate a proccess id
-		if ((pid = proc_allocate()) == ENOPID)
-			return ENOPID;
-		
-		// fill process data
-		procs[pid].name = (char *)argv[0];
-		memcpy(procs[pid].cwd, procs[current_proc].cwd, sizeof(procs[current_proc].cwd));
-		
-		// change running status of the current process
-		procs[current_proc].state = 1;
-		oldpid = current_proc;
-		current_proc = pid;
-		procs[pid].state = 2;
-		
+		// prepare process structure and start it
+		if ((ret = proc_start(argv[0])) != 0)
+			return ret;
+
 		// Run the builtin command
 		ret = ((int8_t (*)(const char *argv[], char *envp[])) \
 		      pgm_read_ptr(&(ProgFs2[inode].ptr)))(argv, envp);
@@ -286,10 +319,7 @@ int8_t execve(const char *argv[], char *envp[])
 		if (cleanenv)
 			envp = env_free(envp);
 		
-		// free process
-		proc_clean(pid);
-		current_proc = oldpid;
-		procs[current_proc].state = 2;
+		proc_stop();
 	}
 
 	return ret;

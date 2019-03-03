@@ -10,11 +10,7 @@ extern uint8_t CONSOLE_ECHO;
 #ifdef __cplusplus
 extern "C"{
 #endif
-  void uart_init(void);
-  void uart_putchar(char c, FILE *stream);
-  char uart_getchar(FILE *stream);
-  //FILE *fmemopen(void *buf, size_t size, const char *mode);
-  //FILE *fopen(const char *path, const char *mode);
+  void serial_setup(FILE *uart);
 #ifdef __cplusplus
 }
 #endif
@@ -68,5 +64,9 @@ extern "C"{
     PROGFS_ENTRY(_dev_gpioA6, 26, FS_DEV | FS_READ | FS_WRITE, 0) \
     PROGFS_ENTRY(_dev_gpioA7, 27, FS_DEV | FS_READ | FS_WRITE, 0)
 */
-#endif
 
+#define INIT_TTY \
+  FILE uart;\
+  serial_setup(&uart);
+
+#endif

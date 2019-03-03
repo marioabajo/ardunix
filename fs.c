@@ -308,6 +308,21 @@ int8_t chdir(const char *path)
 
 	// TODO: virtual filesystem structure in process
 	ret = progfs_chdir(pathok);
+	
+	// If the FS call is ok, then change the process CWD
+	if (!ret)
+	{
+		// If the string is inherited by the parent, allocate mem for
+		// the new string.
+		if (procs[current_proc].inherited.cwd)
+		{
+			if ((procs[current_proc].cwd = malloc(PATH_MAX)) == NULL)
+				return ENOMEM;
+			procs[current_proc].inherited.cwd = 0;
+		}
+		strncpy(procs[current_proc].cwd, path, PATH_MAX);
+	}
+
 
 	free(pathok);
 

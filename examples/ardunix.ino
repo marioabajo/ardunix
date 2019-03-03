@@ -39,26 +39,13 @@ const char PROGMEM script[] = "#!/bin/sh\n\nif /bin/false\nthen\n  /bin/ls /bin\
 /* END ARDUNIX CONFIG */
 
 // Init ardunix internal filesystem
-DEF_PROGFS
+INIT_PROGFS
 
 #ifdef __AVR__
 
-FILE uart;
-
-static void serial_setup()
-{
-	// Init serial port
-	uart_init();
-	// Init streams
-	fdev_setup_stream(&uart, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
-	stdin = stdout = stderr = &uart;
-
-}
-
+  
 void setup()
 {
-	serial_setup();
-	printf_P(PSTR("Booting...\n"));
 }
 
 void loop()
@@ -68,11 +55,15 @@ int main(void)
 {
 	int8_t ret;
 
+  /*// Init terminal
+  INIT_TTY
+
 	// Initial process (similar to "init" in linux)
 	init_proc();
 
 	// Show welcome message
-	execl_P(PSTR("cat"), PSTR("/etc/issue"), 0);
+	execl_P(PSTR("cat"), PSTR("/etc/issue"), 0);*/
+  INIT_ARDUNIX
 	/*printf("DEBUG: %s\n", normalize_path("a/etc"));
 	printf("DEBUG: %s\n", normalize_path("./abc/3"));
 	printf("DEBUG: %s\n", normalize_paths("/home/a","../.bad/1"));
@@ -92,4 +83,3 @@ int main(void)
 	printf_P(PSTR("Init process exited(%d), waiting 10 seconds to restart\n"), ret);
 	delay(10000);
 }
-

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "sh.h"
 #include "kernel.h"
 #include "env.h"
@@ -241,7 +242,7 @@ static size_t extend_to_eol(char *str, size_t len)
 	size_t i = len;
 	uint8_t _exit = 1;
 
-	while (_exit)
+	while (_exit && str[i])
 	{
 		if (is_separator(str[i]))
 		{
@@ -338,124 +339,137 @@ static uint8_t str_to_argv(char *input, size_t limit, char *argstr, char *argv[]
 	return j;
 }
 
-static uint8_t find_token(uint8_t target, char *cmd, size_t *pos)
+//static uint8_t find_token(char *cmd, size_t *pos, uint8_t target)
+static uint8_t find_tokens(char *cmd, size_t *pos, uint8_t *prev, uint8_t nargs, ...)
 {
-	size_t i;
+	size_t len;
 	char *str, *save;
-	uint8_t tok;
+	uint8_t tok = 0, i, _exit = 1, t, aux = 0;
+	int8_t do_c = 1, if_c = 1; //br_c = 1, ca_c = 1, pa_c = 1;
+	va_list target;
 	
 	save = cmd;
 
-	while ((i = get_string(cmd, &str)) > 0)
+	while ((len = get_string(cmd, &str)) > 0 && _exit)
 	{
 		// DEBUG
-		//printf("DEBUG: find: %d %d %.*s\n", count, i, i, str);
-		tok = get_token(str, i);
+		//printf("DEBUG: find_token: do:%d if:%d %d %.*s\n", do_c, if_c, len, len, str);
+		if (prev)
+			*prev = tok;
+		tok = get_token(str, len);
+
+		// thread tokens that are part of syntax blocks
 		switch(tok)
 		{
 			case TK_DO:
-				break;
-		}
-		cmd = str + i;
-	}
-}
-
-static uint8_t extend_block(uint8_t start_tok, char *cmd, size_t *pos)
-{
-	uint8_t found = 0;
-	uint8_t count = 0;
-	size_t i;
-	uint8_t prev = 0;
-	uint8_t tok;
-	char *str, *save;
-
-	save = cmd;
-
-	// search for "done" until found or until end of block
-	while ((i = get_string(cmd, &str)) > 0)
-	{
-		// DEBUG
-		//printf("DEBUG: find: %d %d %.*s\n", count, i, i, str);
-		tok = get_token(str, i);
-		switch(tok)
-		{
-			case TK_DO:  // found an anidated loop
-				if (start_tok == TK_DO)
-					count++;
-				break;
-			case TK_IF:
-				if (start_tok == TK_IF)
-					count++;
+				// increment DO/DONE block counter
+				do_c++;
 				break;
 			case TK_DONE:
-				if (start_tok != TK_DO)
-					break;
-				if (count)
-					count--;
-				else if (tok_is_separator(prev))
-					found = 1;
+				// decrement DO/DONE block counter
+				do_c--;
 				break;
-			case TK_ELIF:
-			case TK_ELSE:
-				if (start_tok != TK_IF)
-					break;
-				if (!count && tok_is_separator(prev))
-				{
-					if (tok == TK_ELIF)
-						found = 1;
-					else // TK_ELSE
-						found = 2;
-				}
+			case TK_IF:
+				if_c++;
+				// increment IF/FI block counter
 				break;
 			case TK_FI:
-				if (start_tok != TK_IF)
+				if_c--;
+				// decrement IF/FI block counter
+				break;
+			/*case TK_BROP:
+				// increment Brackets block counter
+				break;
+			case TK_BRCL:
+				// decrement Brackets block counter
+				break;
+			case TK_CASE:
+				// increment CASE/ESAC block counter
+				break;
+			case TK_ESAC:
+				// decrement CASE/ESAC block counter
+				break;
+			case TK_POP:
+				// increment Parenthesis block counter
+				break;
+			case TK_PCL:
+				// decrement Parenthesis block counter
+				break;*/
+		}
+
+		// Check if the token is found and is not part of another syntax
+		// block.
+		va_start(target, nargs);
+		for (i=0; i<nargs; i++)
+		{
+			t = va_arg(target, int);
+			if (t == tok)
+			{
+				// adjust the pointer to set it up at the
+				// beginning of the token
+				aux = len;
+				
+				if (do_c + if_c <= 2)
+				{
+					_exit = 0;
 					break;
-				if (count)
-					count--;
-				else if (tok_is_separator(prev))
-					found = 3;
-				break;      
+				}
+			}
+		}
+		va_end(target);
+		/*if (target == tok)
+		{
+			if (do_c + if_c < 2)
+				break;*/
+			/*if (tok == TK_DO || tok == TK_DONE)
+			{
+				if (!do_c)
+					break;
+			}
+			else if (tok == TK_IF || tok == TK_FI || TK_ELIF \
+				|| TK_ELSE)
+			{
+				if (!if_c)
+					break;
+			}
+			else
+				break;*/
+		//}
 
-		}
-		if (!found)
-		{
-			cmd = str + i;
-			prev = tok;
-		}
-		else
-		{
-			*pos = cmd - save;
-			break;
-		}
+		// increment to pointer to the next token to be read
+		cmd = str + len;
 	}
+	// Save the position of the found token (beginning)
+	*pos = cmd - save - aux;
 	
-	// DEBUG
-	//printf("DEBUG: find result %d %d %.*s\n", found, i, i, str);
-	
-	return found;
+	return tok;
+}
 
+static uint8_t find_token(char *cmd, size_t *pos, uint8_t *prev, uint8_t target)
+{
+	return find_tokens(cmd, pos, prev, 1, target);
 }
 
 static uint8_t syntax_if(char *cmd)
 {
-	uint8_t tok = 0;
+	uint8_t tok = 0, prev_tok;
 	uint8_t found = 0;
 	uint8_t state = 0;
 	uint8_t error = 0;
-	size_t i;
+	size_t len;
 	char *str;
 
 	while (state < 8)
 	{
-		i = get_string(cmd, &str);
-		tok = get_token(str, i);
+		len = get_string(cmd, &str);
+		tok = get_token(str, len);
 
 		switch (state)
 		{
 			case 0: // jump the if
 				break;
 			case 1: // condition
-				i = extend_to_eol(str, i);
+				len = extend_to_eol(str, len);
 				break;
 			case 2: // check new line or separator
 				if (! tok_is_separator(tok))
@@ -465,11 +479,12 @@ static uint8_t syntax_if(char *cmd)
 				if (tok != TK_THEN)
 					error = 1;
 				break;
-			case 4: // jump then block
-				found = extend_block(TK_IF, str, &i);
-				// if there is no "else" go to fi
-				if (found != 2)
-					state += 2;
+			case 4: // jump "then" block
+				found = find_tokens(str, &len, &prev_tok, 3, TK_ELIF, TK_ELSE, TK_FI);
+				if (! tok_is_separator(prev_tok))
+					error = 1;
+				if (found == TK_FI)
+					state = 7;
 				break;
 			case 5:
 				// check else token
@@ -477,8 +492,10 @@ static uint8_t syntax_if(char *cmd)
 					error = 1;
 				break;
 			case 6: // jump else block
-				found = extend_block(TK_IF, str, &i);
-				if (!found)
+				if (find_token(str, &len, &prev_tok, TK_FI) != TK_FI)
+					error = 1;
+				// check new line or separator
+				if (! tok_is_separator(prev_tok))
 					error = 1;
 				break;
 			case 7: // check fi token
@@ -487,14 +504,14 @@ static uint8_t syntax_if(char *cmd)
 				break;
 		}
 		// DEBUG
-		//printf("DEBUG: %d tok: %d\n", state, tok);
+		//printf("DEBUG: %d tok: %d (%.*s)\n", state, tok, len, str);
 
 		if (error)
 		{
 			printf_P(PSTR("Error in IF statement, pos: %s\n"), cmd);
 			return 1;
 		}
-		cmd = str + i;
+		cmd = str + len;
 		state++;
 	}
 
@@ -530,16 +547,16 @@ static int8_t eval_if(char *cmd, size_t *len, char *env[])
 			case 3: // now we need the then
 				break;
 			case 4: // process the "then" part
-				found = extend_block(TK_IF, str, &i);
+				found = find_tokens(str, &i, NULL, 3, TK_ELIF, TK_ELSE, TK_FI);
 				if (!cond)
 					error = eval(str, env, i, &quit);
 				// if we don't found an else, skip to the fi
-				if (found != 2)
-					state += 2;
+				if (found == TK_FI)
+					state = 6;
 			case 5:
 				break; // read the "else"
 			case 6: // if we have an "else" part, limit it and run it
-				extend_block(TK_IF, str, &i);
+				find_token(str, &i, NULL, TK_FI);
 				if (cond)
 					error = eval(str, env, i, &quit);
 			case 7:	// jump the fi
@@ -556,7 +573,7 @@ static int8_t eval_if(char *cmd, size_t *len, char *env[])
 
 static uint8_t syntax_for(char *cmd)
 {
-	uint8_t tok = 0;
+	uint8_t tok = 0, prev_tok;
 	uint8_t state = 0;
 	uint8_t error = 0;
 	size_t i;
@@ -595,8 +612,10 @@ static uint8_t syntax_for(char *cmd)
 					error = 1;
 				break;
 			case 6: // the instructions
-				if (! extend_block(TK_DO, str, &i))
-					error = 1;	
+				if (find_token(str, &i, &prev_tok, TK_DONE) != TK_DONE)
+					error = 1;
+				if (! tok_is_separator(prev_tok))
+					error = 1;
 				break;
 			case 7: // done
 				if (tok != TK_DONE)
@@ -608,7 +627,7 @@ static uint8_t syntax_for(char *cmd)
 
 		if (error)
 		{
-			printf_P(PSTR("Error in FOR statement, pos: %s\n"), cmd);
+			printf_P(PSTR("Error in FOR statement, state: %d pos: %s\n"), state, cmd);
 			return 1;
 		}
 		cmd = str + i;
@@ -655,7 +674,7 @@ static int8_t eval_for(char *cmd, size_t *len, char *env[])
 					/*positional++;
 					if (argv[positional] == NULL)
 					{
-						extend_block(TK_DO, str,&i);
+						find_token(str, &i, NULL, TK_DONE);
 						state = 6;
 					}
 					else
@@ -676,7 +695,7 @@ static int8_t eval_for(char *cmd, size_t *len, char *env[])
 					i = get_string(str + i, &str); // read the new line separator
 					i = get_string(str + i, &str); // read the "do"
 					str += i;
-					extend_block(TK_DO, str, &i);
+					find_token(str, &i, NULL, TK_DONE);
 					state = 6;
 				}
 				else
@@ -689,8 +708,8 @@ static int8_t eval_for(char *cmd, size_t *len, char *env[])
 			case 5: // "do"
 				break;
 			case 6: // the instructions
-				extend_block(TK_DO, str, &i);
-				//DEBUG: printf("DEBUG do: %d \"%.*s\"\n", i, i, str);
+				find_token(str, &i, NULL, TK_DONE);
+				//printf("DEBUG do: %d \"%.*s\"\n", i, i, str);
 				error = eval(str, env, i, &quit);
 				str = loop;
 				i = 0;

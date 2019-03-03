@@ -39,5 +39,6 @@ extern unsigned int etext, edata, end;
 #define snprintf_P snprintf
 #define puts_P puts
 #define memcpy_P memcpy
+#define INIT_TTY
 
 #endif

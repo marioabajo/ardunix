@@ -5,15 +5,30 @@
 
 struct proc
 {
-	uint8_t state;           /* states:
+	uint8_t state;		/* states:
 					0 -> empty process, pid non used
 					1 -> stopped
 					2 -> running
 					3 -> exitting
-	                         */
-	char *name;
-	char cwd[PATH_MAX];
+				*/
+	char *name;		// process name
+	char *cwd;		// current working dircetory
+	uint8_t ppid;		// parent pid
+	
+	// Flags with the fields that are inherited from the father pid
+	struct flags
+	{
+		uint8_t cwd : 1;
+	} inherited;
+	
+	uint8_t errno;		// Process system error number
 };
+
+// Proc states
+#define PROC_EMPTY 0
+#define PROC_STOP  1
+#define PROC_RUN   2
+#define PROC_END   3
 
 extern struct proc procs[PID_MAX];
 extern int8_t current_proc;

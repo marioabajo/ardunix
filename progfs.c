@@ -292,6 +292,5 @@ int8_t progfs_chdir(const char *path)
 	if ((dir.st_mode & FS_MASK_FILETYPE) != FS_DIR)
 		return ENOTDIR; // it's not a directory
 
-	strncpy(procs[current_proc].cwd, path, PATH_MAX);
 	return ret;
 }

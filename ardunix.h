@@ -7,8 +7,8 @@
 #include "kernel.h"
 #include <stdio.h>
 
-#define ARDUNIX_VER "0.5"
-#define ARDUNIX_DATE "2018/09/14"
+#define ARDUNIX_VER "0.5.1"
+#define ARDUNIX_DATE "2019/03/03"
 
 #define DEBUG 0
 
@@ -159,7 +159,7 @@ const char PROGMEM issue[] = "Ardunix " ARDUNIX_VER " (" ARDUNIX_DATE ")\n";
 
 PROGFS_PLATFORM_PREPARE
 
-#define DEF_PROGFS \
+#define INIT_PROGFS \
 const PFS2 ProgFs2[] = \
 {{_,               NULL,               FS_DIR | FS_EXEC | FS_READ, 0}, \
  {_bin,            NULL,               FS_DIR | FS_EXEC | FS_READ, 0}, \
@@ -178,5 +178,10 @@ const PFS2 ProgFs2[] = \
 
 // end of filesystem definition
 
-#endif
+#define INIT_ARDUNIX \
+  INIT_TTY\
+  init_proc();\
+  execl_P(PSTR("cat"), PSTR("/etc/issue"), 0);
 
+
+#endif
